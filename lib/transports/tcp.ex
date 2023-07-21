@@ -86,9 +86,9 @@ defmodule Sippet.Transports.TCP do
          {:ok, _pid} <-
            ThousandIsland.start_link(
              port: state[:port],
+             transport_options: [ip: state[:ip]],
              handler_module: Sippet.Transports.TcpHandler,
-             handler_options: [owner: self()],
-             transport_options: [ip: state[:ip]]
+             handler_options: [owner: self(), name: state[:name]]
            ),
          :ok <- Sippet.register_transport(state[:name], :tcp, true) do
       {:noreply, state}
@@ -100,14 +100,23 @@ defmodule Sippet.Transports.TCP do
   end
 
   @impl true
-  def handle_call({:send_message, message, _to_host, _to_port, _key}, _from, state) do
-    Logger.debug("ready to resolve to sender process: #{to_string(message)}")
+  def handle_call({:send_message, message, to_host, to_port, key}, _from, state) do
+    with {:ok, to_ip} <- resolve_name(to_host, state[:family]),
+         pid when is_pid(pid) <- do_lookup(to_ip, to_port),
+         iodata <- Message.to_iodata(message) do
+      Logger.debug("Sending:\n#{to_string(message)}")
+      send(do_lookup(to_ip, to_port), {:send_message, iodata})
+    else
+      error ->
+        Logger.error("problem sending message #{inspect(key)}, reason: #{inspect(error)}")
+    end
+
     {:reply, :ok, state}
   end
 
   @impl true
-  def handle_call({:lookup, peer_info}, _from, state) do
-    handler = do_lookup(peer_info)
+  def handle_call({:lookup, {host, port}}, _from, state) do
+    handler = do_lookup(host, port)
     {:reply, handler, state}
   end
 
@@ -123,20 +132,18 @@ defmodule Sippet.Transports.TCP do
     {:noreply, state}
   end
 
-  defp do_register(peer_info, handler) do
-    "Registering #{inspect(peer_info)} to #{inspect(handler)}" |> Logger.debug()
-    Registry.register(:connections, peer_info, handler)
-  end
+  defp do_register(peer_info, handler), do: Registry.register(:connections, peer_info, handler)
 
   defp do_unregister(peer_info), do: Registry.unregister(:connections, peer_info)
 
-  defp do_lookup(peer_info) do
-    case Registry.lookup(:connections, peer_info) do
-      [{_, pid}] ->
+  defp do_lookup(host, port) do
+    case Registry.lookup(:connections, {host, port}) do
+      [{_pid, pid}] ->
         pid
 
       [] ->
         Logger.error("no connection handler was registered for this peer")
+        nil
     end
   end
 

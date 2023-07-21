@@ -30,8 +30,6 @@ defmodule Sippet.Transports.TcpHandler do
 
     case Message.parse(data) do
       {:ok, %Message{}} ->
-        Logger.debug(inspect(data))
-
         Sippet.Router.handle_transport_message(
           state[:name],
           data,
@@ -47,6 +45,7 @@ defmodule Sippet.Transports.TcpHandler do
     {:continue, state}
   end
 
+  @impl GenServer
   def handle_info({:send_message, message}, {socket, state}) do
     ThousandIsland.Socket.send(socket, message)
     {:noreply, {socket, state}}
