@@ -47,7 +47,13 @@ defmodule Sippet.Transports.TcpHandler do
 
   @impl GenServer
   def handle_info({:send_message, message}, {socket, state}) do
-    ThousandIsland.Socket.send(socket, message)
+    with io_msg <- Message.to_iodata(message) do
+      ThousandIsland.Socket.send(socket, io_msg)
+    else
+      error ->
+        Logger.error("Could not change message to io list. reason: #{inspect(error)}")
+    end
+
     {:noreply, {socket, state}}
   end
 

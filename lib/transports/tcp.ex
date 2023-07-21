@@ -8,6 +8,8 @@ defmodule Sippet.Transports.TCP do
   require Logger
 
   alias Sippet.Message, as: Message
+  alias Message.StatusLine, as: StatusLine
+  alias Message.RequestLine, as: RequestLine
 
   @doc false
   def child_spec(options) do
@@ -100,12 +102,19 @@ defmodule Sippet.Transports.TCP do
   end
 
   @impl true
-  def handle_call({:send_message, message, to_host, to_port, key}, _from, state) do
+  def handle_call({:send_message, %Message{start_line: %RequestLine{}} = message, to_host, to_port, key}, _from, state) do
+
+    Logger.warning("New Request Dialogs are unsupported at this time, message not sent")
+
+    {:reply, :ok, state}
+  end
+
+  @impl true
+  def handle_call({:send_message, %Message{start_line: %StatusLine{}} = message, to_host, to_port, key}, _from, state) do
     with {:ok, to_ip} <- resolve_name(to_host, state[:family]),
-         pid when is_pid(pid) <- do_lookup(to_ip, to_port),
-         iodata <- Message.to_iodata(message) do
+         pid when is_pid(pid) <- do_lookup(to_ip, to_port) do
       Logger.debug("Sending:\n#{to_string(message)}")
-      send(do_lookup(to_ip, to_port), {:send_message, iodata})
+      send(do_lookup(to_ip, to_port), {:send_message, message})
     else
       error ->
         Logger.error("problem sending message #{inspect(key)}, reason: #{inspect(error)}")
