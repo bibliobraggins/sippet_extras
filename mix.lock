@@ -1,0 +1,9 @@
+%{
+  "elixir_make": {:hex, :elixir_make, "0.7.7", "7128c60c2476019ed978210c245badf08b03dbec4f24d05790ef791da11aa17c", [:mix], [{:castore, "~> 0.1 or ~> 1.0", [hex: :castore, repo: "hexpm", optional: true]}], "hexpm", "5bc19fff950fad52bbe5f211b12db9ec82c6b34a9647da0c2224b8b8464c7e6c"},
+  "gen_state_machine": {:hex, :gen_state_machine, "3.0.0", "1e57f86a494e5c6b14137ebef26a7eb342b3b0070c7135f2d6768ed3f6b6cdff", [:mix], [], "hexpm", "0a59652574bebceb7309f6b749d2a41b45fdeda8dbb4da0791e355dd19f0ed15"},
+  "sippet": {:hex, :sippet, "1.0.10", "35bd21dc2b59c99f29c91dffa79580a13d305a8bc4fa86299d716a40adca2086", [:mix], [{:elixir_make, "~> 0.4", [hex: :elixir_make, repo: "hexpm", optional: false]}, {:gen_state_machine, ">= 3.0.0", [hex: :gen_state_machine, repo: "hexpm", optional: false]}, {:sippet_uri, "~> 0.1", [hex: :sippet_uri, repo: "hexpm", optional: false]}], "hexpm", "cfe6a58a6e270d817946e21c9473ae432b67e99533343f21e888fd4aba1c0eb6"},
+  "sippet_uri": {:hex, :sippet_uri, "0.1.0", "ec8bfe6df12e17c0ca32b18b2177585426448bf3e3b0434f5ddfb93dc075add2", [:mix], [], "hexpm", "e8b1ad3fdd12670b4e9851a273624a7ed4b12cf5e705dec7906204c294d9790b"},
+  "telemetry": {:hex, :telemetry, "1.2.1", "68fdfe8d8f05a8428483a97d7aab2f268aaff24b49e0f599faa091f1d4e7f61c", [:rebar3], [], "hexpm", "dad9ce9d8effc621708f99eac538ef1cbe05d6a874dd741de2e689c47feafed5"},
+  "thousand_island": {:hex, :thousand_island, "0.6.7", "3a91a7e362ca407036c6691e8a4f6e01ac8e901db3598875863a149279ac8571", [:mix], [{:telemetry, "~> 0.4 or ~> 1.0", [hex: :telemetry, repo: "hexpm", optional: false]}], "hexpm", "541a5cb26b88adf8d8180b6b96a90f09566b4aad7a6b3608dcac969648cf6765"},
+  "websock": {:hex, :websock, "0.5.2", "b3c08511d8d79ed2c2f589ff430bd1fe799bb389686dafce86d28801783d8351", [:mix], [], "hexpm", "925f5de22fca6813dfa980fb62fd542ec43a2d1a1f83d2caec907483fe66ff05"},
+}
