@@ -70,7 +70,7 @@ defmodule Sippet.Transports.TcpHandler do
   end
 
   @impl ThousandIsland.Handler
-  def handle_timeout(socket, state) do
+  def handle_timeout(_socket, state) do
     {:close, state}
   end
 

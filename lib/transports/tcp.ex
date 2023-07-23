@@ -8,8 +8,6 @@ defmodule Sippet.Transports.TCP do
   require Logger
 
   alias Sippet.Message, as: Message
-  alias Message.StatusLine, as: StatusLine
-  alias Message.RequestLine, as: RequestLine
 
   @doc false
   def child_spec(options) do
