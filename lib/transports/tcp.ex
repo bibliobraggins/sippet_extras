@@ -90,31 +90,24 @@ defmodule Sippet.Transports.TCP do
              port: state[:port],
              transport_options: [ip: state[:ip]],
              handler_module: Sippet.Transports.TcpHandler,
-             handler_options: [owner: self(), name: state[:name]]
+             handler_options: [socket: self(), name: state[:name]]
            ),
          :ok <- Sippet.register_transport(state[:name], :tcp, true) do
       {:noreply, state}
     else
-      _ ->
-        Logger.warning("couldn't start transport process")
+      error ->
+        Logger.warning("couldn't start transport process, reason: #{inspect(error)}")
+        Process.sleep(15_000)
         {:noreply, nil, {:continue, state}}
     end
   end
 
   @impl true
-  def handle_call({:send_message, %Message{start_line: %RequestLine{}} = message, to_host, to_port, key}, _from, state) do
-
-    Logger.warning("New Request Dialogs are unsupported at this time, message not sent")
-
-    {:reply, :ok, state}
-  end
-
-  @impl true
-  def handle_call({:send_message, %Message{start_line: %StatusLine{}} = message, to_host, to_port, key}, _from, state) do
+  def handle_call({:send_message, %Message{} = message, to_host, to_port, key}, _from, state) do
     with {:ok, to_ip} <- resolve_name(to_host, state[:family]),
-         pid when is_pid(pid) <- do_lookup(to_ip, to_port) do
+         {:ok, handler} when is_pid(handler) <- do_lookup(to_ip, to_port) do
       Logger.debug("Sending:\n#{to_string(message)}")
-      send(do_lookup(to_ip, to_port), {:send_message, message})
+      send(handler, {:send_message, message})
     else
       error ->
         Logger.error("problem sending message #{inspect(key)}, reason: #{inspect(error)}")
@@ -125,7 +118,18 @@ defmodule Sippet.Transports.TCP do
 
   @impl true
   def handle_call({:lookup, {host, port}}, _from, state) do
-    handler = do_lookup(host, port)
+    handler =
+      case do_lookup(host, port) do
+        {:ok, handler} when is_pid(handler) ->
+          handler
+
+        {:ok, nil} ->
+          raise "client transactions aren't implemented yet, no handler could be started to send the message"
+
+        error ->
+          raise "error looking up handler process #{inspect(error)}"
+      end
+
     {:reply, handler, state}
   end
 
@@ -148,11 +152,11 @@ defmodule Sippet.Transports.TCP do
   defp do_lookup(host, port) do
     case Registry.lookup(:connections, {host, port}) do
       [{_pid, pid}] ->
-        pid
+        {:ok, pid}
 
       [] ->
-        Logger.error("no connection handler was registered for this peer")
-        nil
+        Logger.error("no client transactions supported yet")
+        {:ok, nil}
     end
   end
 

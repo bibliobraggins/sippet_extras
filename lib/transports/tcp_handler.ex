@@ -17,10 +17,15 @@ defmodule Sippet.Transports.TcpHandler do
     } = Socket.peer_info(socket)
 
     GenServer.cast(
-      state[:owner],
+      state[:socket],
       {:register, {address, port}, self()}
     )
 
+    {:continue, state}
+  end
+
+  @impl ThousandIsland.Handler
+  def handle_data("\r\n\r\n", _socket, state) do
     {:continue, state}
   end
 
@@ -65,8 +70,26 @@ defmodule Sippet.Transports.TcpHandler do
   end
 
   @impl ThousandIsland.Handler
-  def handle_timeout(_socket, state) do
+  def handle_timeout(socket, state) do
     {:close, state}
+  end
+
+  @impl ThousandIsland.Handler
+  def handle_shutdown(socket, state) do
+    %{
+      address: address,
+      port: port,
+      ssl_cert: _ssl_cert
+    } = Socket.peer_info(socket)
+
+    GenServer.cast(
+      state[:socket],
+      {:unregister, {address, port}}
+    )
+
+    Logger.debug("shutting down handler #{inspect(self())} : #{stringify_hostport(address, port)}")
+
+    :ok
   end
 
   def stringify_sockname(socket) do
