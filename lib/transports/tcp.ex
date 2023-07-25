@@ -139,7 +139,7 @@ defmodule Sippet.Transports.TCP do
     end
   end
 
-  defp resolve_name(host, family) do
+  def resolve_name(host, family) do
     host
     |> String.to_charlist()
     |> :inet.getaddr(family)

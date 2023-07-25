@@ -12,6 +12,8 @@ defmodule Sippet.Transports.TCP.Server do
   def handle_connection(socket, state) do
     peer = Socket.peer_info(socket)
 
+    Logger.debug(inspect(socket.socket))
+
     register_conn(state[:registry], peer.address, peer.port)
 
     {:continue, state}
@@ -79,7 +81,7 @@ defmodule Sippet.Transports.TCP.Server do
     } = Socket.peer_info(socket)
 
     Logger.debug(
-      "shutting down handler #{inspect(self())} : #{stringify_hostport(address, port)}"
+      "shutting down handler #{inspect(self())} : #{inspect(stringify_hostport(address, port))}"
     )
 
     :ok
