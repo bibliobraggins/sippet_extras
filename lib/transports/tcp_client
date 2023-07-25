@@ -1,0 +1,77 @@
+defmodule Transports.TcpClient do
+  use GenServer
+
+  def start_link(options) do
+    # [transport: pid(), timeout: non_neg_integer()]
+
+    transport =
+      case Keyword.fetch(options, :transport) do
+        {:ok, pid} when is_pid(pid) ->
+          pid
+        _ ->
+          raise "no transport pid provided to #{inspect(__MODULE__)}, #{inspect(self())}"
+      end
+
+    timeout =
+      case Keyword.fetch(options, :timeout) do
+        {:ok, nil} ->
+          10_000
+        {:ok, timeout} when is_integer(timeout) ->
+          timeout
+      end
+
+   peer =
+      case Keyword.fetch(options, :peer) do
+        {:ok, {addr, port}} ->
+          {addr, port}
+        _ ->
+          raise "no{peer_addr, peer_port} data provided to #{inspect(__MODULE__)}, #{inspect(self())}"
+      end
+
+    {address, family} =
+      case Keyword.fetch(options, :address) do
+        {:ok, {address, family}} when family in [:inet, :inet6] and is_binary(address) ->
+          {address, family}
+
+        {:ok, address} when is_binary(address) ->
+          {address, :inet}
+
+        {:ok, other} ->
+          raise ArgumentError,
+                "expected :address to be an address or {address, family} tuple, got: " <>
+                  "#{inspect(other)}"
+
+        :error ->
+          {"0.0.0.0", :inet}
+      end
+
+    ip =
+      case resolve_name(address, family) do
+        {:ok, ip} ->
+          ip
+
+        {:error, reason} ->
+          raise ArgumentError,
+                ":address contains an invalid IP or DNS name, got: #{inspect(reason)}"
+      end
+
+    GenServer.start_link(__MODULE__, {transport, ip, family, peer, timeout})
+  end
+
+  @impl true
+  def init({transport, ip, family, peer, timeout}) do
+    {:ok, :connect, {:continue, {transport, ip, family, peer, timeout}}}
+  end
+
+  @impl true
+  def handle_continue({transport, ip, family, peer, timeout}, :connect) do
+    {peer_addr, peer_port} = peer
+
+    socket =
+      case :gen_tcp.connect(peer_addr, peer_port, [:binary, {:active, true}, {:ip, ip}, family], timeout) do
+        {:ok, socket} ->
+
+      end
+  end
+
+end

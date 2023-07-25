@@ -82,22 +82,23 @@ defmodule Sippet.Transports.TCP do
 
   @impl true
   def handle_continue(state, nil) do
-    with {:ok, _pid} <- Registry.start_link(keys: :unique, name: :connections),
-         {:ok, _pid} <-
-           ThousandIsland.start_link(
-             port: state[:port],
-             transport_options: [ip: state[:ip]],
-             handler_module: Sippet.Transports.TcpHandler,
-             handler_options: [socket: self(), name: state[:name]]
-           ),
-         :ok <- Sippet.register_transport(state[:name], :tcp, true) do
-      {:noreply, state}
+    children = [
+      {Registry, name: :connections, keys: :unique},
+      {ThousandIsland,
+        port: state[:port],
+        transport_options: [ip: state[:ip]],
+        handler_module: Sippet.Transports.TcpHandler,
+        handler_options: [socket: self(), name: state[:name]]}
+    ]
+
+    with {:ok, _pid} <- Supervisor.start_link(children, [strategy: :one_for_one]),
+          :ok <- Sippet.register_transport(state[:name], :tcp, true) do
+        {:noreply, state}
     else
       error ->
-        Logger.warning("couldn't start transport process, reason: #{inspect(error)}")
-        Process.sleep(15_000)
-        {:noreply, nil, {:continue, state}}
+        raise "could not start tcp socket, reason: #{inspect(error)}"
     end
+
   end
 
   @impl true
