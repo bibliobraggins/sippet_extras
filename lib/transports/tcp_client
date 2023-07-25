@@ -1,8 +1,8 @@
-defmodule Transports.TcpClient do
+defmodule Sippet.Transports.TCP.Client do
   use GenServer
 
   def start_link(options) do
-    # [transport: pid(), timeout: non_neg_integer()]
+    # [transport: pid(), timeout: non_neg_integer(), registry: atom()]
 
     transport =
       case Keyword.fetch(options, :transport) do
@@ -70,8 +70,11 @@ defmodule Transports.TcpClient do
     socket =
       case :gen_tcp.connect(peer_addr, peer_port, [:binary, {:active, true}, {:ip, ip}, family], timeout) do
         {:ok, socket} ->
-
+          socket
+        {:error, reason} ->
+          raise "could not connect to #{inspect(peer_addr)}:#{inspect(peer_port)}"
       end
+
   end
 
 end

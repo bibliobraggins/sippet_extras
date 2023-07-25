@@ -27,7 +27,6 @@ defmodule Sippet.Transports.Connections do
   defp do_lookup(host, port) do
     case Registry.lookup(:connections, {host, port}) do
       [{_pid, pid}] ->
-        Logger.debug(inspect(pid))
         {:ok, pid}
 
       [] ->
@@ -37,7 +36,7 @@ defmodule Sippet.Transports.Connections do
   end
 
   @impl true
-  def handle_call({:lookup, {host, port}}, _from, state) do
+  def handle_call({:lookup, host, port}, _from, state) do
     {:reply, do_lookup(host, port), state}
   end
 

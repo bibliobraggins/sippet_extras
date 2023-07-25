@@ -1,4 +1,4 @@
-defmodule Sippet.Transports.TcpHandler do
+defmodule Sippet.Transports.TCP.Server do
   use ThousandIsland.Handler
 
   alias ThousandIsland
@@ -46,6 +46,7 @@ defmodule Sippet.Transports.TcpHandler do
   @impl GenServer
   def handle_info({:send_message, message}, {socket, state}) do
     with io_msg <- Message.to_iodata(message) do
+      Logger.debug("Sending:\n#{to_string(message)}")
       ThousandIsland.Socket.send(socket, io_msg)
     else
       error ->

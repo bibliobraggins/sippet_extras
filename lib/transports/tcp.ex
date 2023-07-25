@@ -9,6 +9,7 @@ defmodule Sippet.Transports.TCP do
 
   alias Sippet.Message, as: Message
   alias Sippet.Transports.Connections, as: Connections
+  alias Sippet.Transports.TCP.Server, as: Server
 
   @doc false
   def child_spec(options) do
@@ -94,7 +95,7 @@ defmodule Sippet.Transports.TCP do
       {ThousandIsland,
        port: state[:port],
        transport_options: [ip: state[:ip]],
-       handler_module: Sippet.Transports.TcpHandler,
+       handler_module: Server,
        handler_options: [
          name: state[:name],
          family: state[:family],
@@ -104,7 +105,6 @@ defmodule Sippet.Transports.TCP do
 
     with {:ok, _pid} <- Supervisor.start_link(children, strategy: :one_for_one),
          :ok <- Sippet.register_transport(state[:name], :tcp, true) do
-      Logger.debug("started TCP transport")
       {:noreply, state}
     else
       error ->
@@ -115,7 +115,8 @@ defmodule Sippet.Transports.TCP do
   @impl true
   def handle_call({:send_message, %Message{} = message, to_host, to_port, key}, _from, state) do
     with {:ok, to_ip} <- resolve_name(to_host, state[:family]),
-         handler when is_pid(handler) <- lookup_conn(state[:registry], to_ip, to_port) do
+         {:ok, handler} when is_pid(handler) <- lookup_conn(state[:registry], to_ip, to_port) do
+
       send(handler, {:send_message, message})
     else
       error ->
