@@ -10,16 +10,9 @@ defmodule Sippet.Transports.TcpHandler do
 
   @impl ThousandIsland.Handler
   def handle_connection(socket, state) do
-    %{
-      address: address,
-      port: port,
-      ssl_cert: _ssl_cert
-    } = Socket.peer_info(socket)
+    peer = Socket.peer_info(socket)
 
-    GenServer.cast(
-      state[:socket],
-      {:register, {address, port}, self()}
-    )
+    register_conn(state[:registry], peer.address, peer.port)
 
     {:continue, state}
   end
@@ -70,26 +63,51 @@ defmodule Sippet.Transports.TcpHandler do
   end
 
   @impl ThousandIsland.Handler
-  def handle_timeout(_socket, state) do
+  def handle_timeout(socket, state) do
+    _peer = Socket.peer_info(socket)
+
     {:close, state}
   end
 
   @impl ThousandIsland.Handler
-  def handle_shutdown(socket, state) do
+  def handle_shutdown(socket, _state) do
     %{
       address: address,
       port: port,
       ssl_cert: _ssl_cert
     } = Socket.peer_info(socket)
 
-    GenServer.cast(
-      state[:socket],
-      {:unregister, {address, port}}
+    Logger.debug(
+      "shutting down handler #{inspect(self())} : #{stringify_hostport(address, port)}"
     )
 
-    Logger.debug("shutting down handler #{inspect(self())} : #{stringify_hostport(address, port)}")
-
     :ok
+  end
+
+  defp register_conn(registry, to_host, to_port) do
+    try do
+      GenServer.call(registry, {:register, to_host, to_port})
+    rescue
+      reason ->
+        Logger.emergency(
+          "could not lookup handler pid, registry process is not responsive, reason: #{inspect(reason)}"
+        )
+
+        {:error, reason}
+    end
+  end
+
+  def unregister_conn(registry, to_host, to_port) do
+    try do
+      GenServer.call(registry, {:unregister, to_host, to_port})
+    rescue
+      reason ->
+        Logger.emergency(
+          "could not lookup handler pid, registry process is not responsive, reason: #{inspect(reason)}"
+        )
+
+        {:error, reason}
+    end
   end
 
   def stringify_sockname(socket) do

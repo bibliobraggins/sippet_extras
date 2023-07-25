@@ -8,6 +8,7 @@ defmodule Sippet.Transports.TCP do
   require Logger
 
   alias Sippet.Message, as: Message
+  alias Sippet.Transports.Connections, as: Connections
 
   @doc false
   def child_spec(options) do
@@ -72,7 +73,13 @@ defmodule Sippet.Transports.TCP do
                 ":address contains an invalid IP or DNS name, got: #{inspect(reason)}"
       end
 
-    GenServer.start_link(__MODULE__, name: name, ip: ip, port: port, family: family)
+    GenServer.start_link(__MODULE__,
+      name: name,
+      ip: ip,
+      port: port,
+      family: family,
+      registry: :"#{name}_registry"
+    )
   end
 
   @impl true
@@ -83,29 +90,32 @@ defmodule Sippet.Transports.TCP do
   @impl true
   def handle_continue(state, nil) do
     children = [
-      {Registry, name: :connections, keys: :unique},
+      {Connections, state[:registry]},
       {ThousandIsland,
-        port: state[:port],
-        transport_options: [ip: state[:ip]],
-        handler_module: Sippet.Transports.TcpHandler,
-        handler_options: [socket: self(), name: state[:name]]}
+       port: state[:port],
+       transport_options: [ip: state[:ip]],
+       handler_module: Sippet.Transports.TcpHandler,
+       handler_options: [
+         name: state[:name],
+         family: state[:family],
+         registry: state[:registry]
+       ]}
     ]
 
-    with {:ok, _pid} <- Supervisor.start_link(children, [strategy: :one_for_one]),
-          :ok <- Sippet.register_transport(state[:name], :tcp, true) do
-        {:noreply, state}
+    with {:ok, _pid} <- Supervisor.start_link(children, strategy: :one_for_one),
+         :ok <- Sippet.register_transport(state[:name], :tcp, true) do
+      Logger.debug("started TCP transport")
+      {:noreply, state}
     else
       error ->
         raise "could not start tcp socket, reason: #{inspect(error)}"
     end
-
   end
 
   @impl true
   def handle_call({:send_message, %Message{} = message, to_host, to_port, key}, _from, state) do
     with {:ok, to_ip} <- resolve_name(to_host, state[:family]),
-         {:ok, handler} when is_pid(handler) <- do_lookup(to_ip, to_port) do
-      Logger.debug("Sending:\n#{to_string(message)}")
+         handler when is_pid(handler) <- lookup_conn(state[:registry], to_ip, to_port) do
       send(handler, {:send_message, message})
     else
       error ->
@@ -115,47 +125,16 @@ defmodule Sippet.Transports.TCP do
     {:reply, :ok, state}
   end
 
-  @impl true
-  def handle_call({:lookup, {host, port}}, _from, state) do
-    handler =
-      case do_lookup(host, port) do
-        {:ok, handler} when is_pid(handler) ->
-          handler
+  defp lookup_conn(registry, to_host, to_port) do
+    try do
+      GenServer.call(registry, {:lookup, to_host, to_port}, 5000)
+    rescue
+      reason ->
+        Logger.emergency(
+          "could not lookup handler pid, registry process is not responsive, reason: #{inspect(reason)}"
+        )
 
-        {:ok, nil} ->
-          raise "client transactions aren't implemented yet, no handler could be started to send the message"
-
-        error ->
-          raise "error looking up handler process #{inspect(error)}"
-      end
-
-    {:reply, handler, state}
-  end
-
-  @impl true
-  def handle_cast({:register, peer_info, handler}, state) do
-    do_register(peer_info, handler)
-    {:noreply, state}
-  end
-
-  @impl true
-  def handle_cast({:unregister, peer_info}, state) do
-    do_unregister(peer_info)
-    {:noreply, state}
-  end
-
-  defp do_register(peer_info, handler), do: Registry.register(:connections, peer_info, handler)
-
-  defp do_unregister(peer_info), do: Registry.unregister(:connections, peer_info)
-
-  defp do_lookup(host, port) do
-    case Registry.lookup(:connections, {host, port}) do
-      [{_pid, pid}] ->
-        {:ok, pid}
-
-      [] ->
-        Logger.error("no client transactions supported yet")
-        {:ok, nil}
+        {:error, reason}
     end
   end
 
