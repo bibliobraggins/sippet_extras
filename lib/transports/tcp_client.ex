@@ -1,24 +1,40 @@
 defmodule Sippet.Transports.TCP.Client do
   use GenServer
+  require Logger
 
   alias Sippet.Message, as: Msg
   import Sippet.Transports.TCP
 
-  def start_link(options) do
-    # [transport: pid(), timeout: non_neg_integer(), registry: atom()]
+  @type option :: :registry | :timeout | :peer | :socket | :start_message | :retries
+  @type options :: [option]
 
+  @enforce_keys [
+    :registry,
+    :timeout,
+    :peer,
+    :socket,
+    :start_message,
+    :retries
+  ]
+  defstruct @enforce_keys
+  @type t :: %__MODULE__{}
+
+  @spec start_link(keyword) :: :ignore | {:error, any} | {:ok, pid}
+  def start_link(options) do
     registry =
       case Keyword.fetch(options, :registry) do
         {:ok, pid} when is_pid(pid) ->
           pid
+
         _ ->
           raise "no registry pid provided to #{inspect(__MODULE__)}, #{inspect(self())}"
       end
 
-   peer =
+    peer =
       case Keyword.fetch(options, :peer) do
         {:ok, {addr, port}} ->
           {addr, port}
+
         _ ->
           raise "no{peer_addr, peer_port} data provided to #{inspect(__MODULE__)}, #{inspect(self())}"
       end
@@ -60,37 +76,100 @@ defmodule Sippet.Transports.TCP.Client do
       end
 
     # initial message to transmit on behalf of downstream client
-    init_msg =
-      with {:ok, init_msg = %Msg{}} <- Keyword.fetch(options, :init_msg),
-          true <- Msg.valid?(init_msg)
-      do
-        init_msg
+    start_message =
+      with {:ok, start_message} <- Keyword.fetch(options, :start_message),
+           true <- Msg.valid?(start_message) do
+        start_message
       else
         _ ->
-          raise "initial message must be a valid SIP message"
+          Logger.error("initial message must be a valid SIP message: assuming this is a test")
       end
 
-    state = [ip: ip, registry: registry, family: family, peer: peer, timeout: timeout, init_msg: init_msg, retries: 5]
+    options = [
+      ip: ip,
+      registry: registry,
+      family: family,
+      peer: peer,
+      timeout: timeout,
+      start_message: start_message,
+      retries: 5
+    ]
 
-    GenServer.start_link(__MODULE__, state)
+    GenServer.start_link(__MODULE__, options)
   end
 
   @impl true
-  def init(state) do
-    {:ok, :connect, {:continue, state}}
+  @spec init(options()) :: {:ok, :connect, {:continue, options}}
+  def init(options) do
+    {:ok, :connect, {:continue, options}}
   end
 
   @impl true
-  def handle_continue(state, :connect) do
-    {addr, port} = state[:peer]
+  @spec handle_continue(keyword, :connect) ::
+          {:noreply, struct} | {:noreply, :connect, {:continue, options()}}
+  def handle_continue(options, :connect) do
+    {addr, port} = options[:peer]
 
-    case :gen_tcp.connect(addr, port, [:binary, {:active, true}, {:ip, state[:ip]}, state[:family]], state[:timeout]) do
+    case :gen_tcp.connect(
+           addr,
+           port,
+           [:binary, {:active, true}, {:packet, :raw}, {:ip, options[:ip]}, options[:family]],
+           options[:timeout]
+         ) do
       {:ok, socket} ->
-        {:noreply, Keyword.put(state, :socket, socket)}
+        state = %__MODULE__{} = struct(__MODULE__, Keyword.put(options, :socket, socket))
+        {:noreply, state}
+
       {:error, reason} ->
-        raise "could not connect to #{inspect(addr)}:#{inspect(port)} :: #{inspect(reason)}"
-        {:noreply, :connect, {:continue, Keyword.put(state, :retries, (state[:retries] - 1))}}
+        Logger.error(
+          "could not connect to #{inspect(addr)}:#{inspect(port)} :: #{inspect(reason)}"
+        )
+
+        Process.sleep(5_000)
+        {:noreply, :connect, {:continue, Keyword.put(options, :retries, options[:retries] - 1)}}
     end
   end
 
+  @impl true
+  def handle_info({:tcp, socket, data}, state) do
+    Logger.debug("#{inspect(socket)} recevied message: #{inspect(data)}")
+
+    {:noreply, state}
+  end
+
+  @impl true
+  def handle_info({:tcp_closed, socket}, state) do
+    Logger.debug("#{inspect(socket)} closed")
+
+    {:noreply, state}
+  end
+
+  @impl true
+  def handle_info({:tcp_error, socket, reason}, state) do
+    Logger.debug("#{inspect(socket)} recevied error: #{inspect(reason)}")
+
+    {:noreply, state}
+  end
+end
+
+defmodule Sippet.Transports.TCP.ClientSupervisor do
+  use DynamicSupervisor
+
+  def start_link(options) do
+    DynamicSupervisor.start_link(__MODULE__, options, name: options[:interface])
+  end
+
+  def start_client(client_options) do
+    spec = {
+      Sippet.Transports.TCP.Client,
+      client_options
+    }
+
+    DynamicSupervisor.start_child(__MODULE__, spec)
+  end
+
+  @impl true
+  def init(_options) do
+    DynamicSupervisor.init(strategy: :one_for_one)
+  end
 end

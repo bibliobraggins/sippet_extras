@@ -108,7 +108,9 @@ defmodule Sippet.Transports.TCP do
       {:noreply, state}
     else
       error ->
-        raise "could not start tcp socket, reason: #{inspect(error)}"
+        Logger.error("could not start tcp socket, reason: #{inspect(error)}")
+        Process.sleep(5_000)
+        {:noreply, nil, {:continue, state}}
     end
   end
 
@@ -116,7 +118,6 @@ defmodule Sippet.Transports.TCP do
   def handle_call({:send_message, %Message{} = message, to_host, to_port, key}, _from, state) do
     with {:ok, to_ip} <- resolve_name(to_host, state[:family]),
          {:ok, handler} when is_pid(handler) <- lookup_conn(state[:registry], to_ip, to_port) do
-
       send(handler, {:send_message, message})
     else
       error ->

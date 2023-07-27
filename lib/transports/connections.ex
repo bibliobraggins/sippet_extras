@@ -14,7 +14,9 @@ defmodule Sippet.Transports.Connections do
       ]
 
     case Supervisor.start_link(children, strategy: :one_for_one) do
-      {:ok, pid} when is_pid(pid) -> {:ok, nil}
+      {:ok, pid} when is_pid(pid) ->
+        {:ok, nil}
+
       error ->
         raise "failed to start #{inspect(name)}, reason: #{inspect(error)}"
     end
