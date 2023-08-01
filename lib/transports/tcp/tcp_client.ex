@@ -16,6 +16,7 @@ defmodule Sippet.Transports.TCP.Client do
     :start_message,
     :retries
   ]
+
   defstruct @enforce_keys
   @type t :: %__MODULE__{}
 
@@ -23,8 +24,8 @@ defmodule Sippet.Transports.TCP.Client do
   def start_link(options) do
     registry =
       case Keyword.fetch(options, :registry) do
-        {:ok, pid} when is_pid(pid) ->
-          pid
+        {:ok, registry} when is_atom(registry) ->
+          registry
 
         _ ->
           raise "no registry pid provided to #{inspect(__MODULE__)}, #{inspect(self())}"
@@ -36,7 +37,7 @@ defmodule Sippet.Transports.TCP.Client do
           {addr, port}
 
         _ ->
-          raise "no{peer_addr, peer_port} data provided to #{inspect(__MODULE__)}, #{inspect(self())}"
+          raise "no {peer_addr, peer_port} data provided to #{inspect(__MODULE__)}, #{inspect(self())}"
       end
 
     {address, family} =
@@ -77,8 +78,8 @@ defmodule Sippet.Transports.TCP.Client do
 
     # initial message to transmit on behalf of downstream client
     start_message =
-      with {:ok, start_message} <- Keyword.fetch(options, :start_message),
-           true <- Msg.valid?(start_message) do
+      with {:ok, start_message} <- Keyword.fetch(options, :start_message) do
+          # true <- Msg.valid?(start_message) do
         start_message
       else
         _ ->
@@ -117,7 +118,12 @@ defmodule Sippet.Transports.TCP.Client do
            options[:timeout]
          ) do
       {:ok, socket} ->
-        state = %__MODULE__{} = struct(__MODULE__, Keyword.put(options, :socket, socket))
+        state = struct(__MODULE__, Keyword.put(options, :socket, socket))
+
+
+
+        :gen_tcp.send(socket, options[:start_message])  |> inspect() |> Logger.debug()
+
         {:noreply, state}
 
       {:error, reason} ->
@@ -131,7 +137,27 @@ defmodule Sippet.Transports.TCP.Client do
   end
 
   @impl true
-  def handle_info({:tcp, socket, data}, state) do
+  def handle_info({:send_message, "\r\n\r\n" = msg}, state) do
+    :gen_tcp.send(state.socket, msg) |> inspect() |> Logger.debug()
+
+    {:noreply, {state.socket, state}}
+  end
+
+  @impl true
+  def handle_info({:send_message, %Msg{} = msg}, state) do
+    with io_msg <- Msg.to_iodata(msg) do
+      Logger.debug("Sending:\n#{to_string(msg)}")
+      :gen_tcp.send(state.socket, io_msg)
+    else
+      error ->
+        Logger.error("Could not change message to io list. reason: #{inspect(error)}")
+    end
+
+    {:noreply, {state.socket, state}}
+  end
+
+  @impl true
+  def handle_info({:tcp, socket, data = %Msg{}}, state) do
     Logger.debug("#{inspect(socket)} recevied message: #{inspect(data)}")
 
     {:noreply, state}
@@ -139,7 +165,7 @@ defmodule Sippet.Transports.TCP.Client do
 
   @impl true
   def handle_info({:tcp_closed, socket}, state) do
-    Logger.debug("#{inspect(socket)} closed")
+    Logger.debug("#{inspect(socket)} :: #{inspect(self())} closed")
 
     {:noreply, state}
   end
@@ -150,6 +176,10 @@ defmodule Sippet.Transports.TCP.Client do
 
     {:noreply, state}
   end
+
+  @impl true
+  def handle_info(_, state), do: {:noreply, state}
+
 end
 
 defmodule Sippet.Transports.TCP.ClientSupervisor do

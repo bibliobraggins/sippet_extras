@@ -105,7 +105,7 @@ defmodule Sippet.Transports.TCP do
 
     with {:ok, _pid} <- Supervisor.start_link(children, strategy: :one_for_one),
          :ok <- Sippet.register_transport(state[:name], :tcp, true) do
-      {:noreply, state}
+          {:noreply, state}
     else
       error ->
         Logger.error("could not start tcp socket, reason: #{inspect(error)}")
