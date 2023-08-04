@@ -22,35 +22,11 @@ defmodule SippetExtras do
     end
   end
 
-  defp build_core(name) do
-    defmodule :"#{name}.Core" do
-      use Sippet.Core
-      require Logger
-
-      @name name
-
-      alias Sippet.Message, as: Msg
-      alias Msg.RequestLine, as: Request
-      alias Msg.StatusLine, as: Response
-
-      @impl true
-      def receive_request(%Msg{start_line: %Request{}} = req, _key) do
-        Logger.debug("Received|#{inspect(__MODULE__)}|\n#{to_string(req)}")
-
-        Sippet.send(@name, Msg.to_response(req, 200))
-      end
-
-      @impl true
-      def receive_response(%Msg{start_line: %Response{}} = resp, _client_key) do
-        Logger.debug("Received|#{inspect(__MODULE__)}|\n#{to_string(resp)}")
-      end
-
-      @impl true
-      def receive_error(reason, key) do
-        Logger.warning("Error|#{inspect(__MODULE__)}|#{inspect(reason)}|#{inspect(key)}")
-      end
+  defp build_core(opts) do
+    module = :"#{opts[:name]}.CORE"
+    defmodule module do
+      use SipRouter, [name: __MODULE__]
     end
-
-    Sippet.register_core(name, :"#{name}.Core")
+    Sippet.register_core(opts[:name], module)
   end
 end

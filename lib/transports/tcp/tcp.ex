@@ -100,11 +100,9 @@ defmodule Sippet.Transports.TCP do
   end
 
   def key(host, port), do: :erlang.term_to_binary({host, port})
-
-  def register_conn(connections, host, port, handler),
+  def connect(connections, host, port, handler),
     do: :ets.insert_new(connections, {key(host, port), handler})
-
-  def unregister_conn(connections, host, port),
+  def disconnect(connections, host, port),
     do: :ets.delete(connections, key(host, port))
   def lookup_conn(connections, host, port),
     do: :ets.lookup(connections, key(host, port))
@@ -154,6 +152,7 @@ defmodule Sippet.Transports.TCP do
       case lookup_conn(connections, to_ip, to_port) do
         [{_key, handler}] when is_pid(handler) ->
           send(handler, {:send_message, message})
+
         [] ->
           nil
           # DynamicSupervisor.start_child(state[:clients], )
@@ -175,7 +174,6 @@ defmodule Sippet.Transports.TCP do
     # transaction.
 
     # lookup_conn(state[:connections], to_host, to_port)
-
 
     {:reply, :ok, state}
   end

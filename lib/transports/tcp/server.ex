@@ -16,7 +16,9 @@ defmodule Sippet.Transports.TCP.Server do
 
     peer |> inspect() |> Logger.info()
 
-    register_conn(state[:connections], peer.address, peer.port, self()) |> inspect() |> Logger.info()
+    connect(state[:connections], peer.address, peer.port, self())
+    |> inspect()
+    |> Logger.info()
 
     key(peer.address, peer.port) |> inspect() |> Logger.info()
 
@@ -31,7 +33,7 @@ defmodule Sippet.Transports.TCP.Server do
 
   @impl ThousandIsland.Handler
   def handle_data("\r\n\r\n", _socket, state) do
-    Logger.debug("got kepalive: #{inspect(self())}")
+    Logger.debug("got keepalive: #{inspect(self())}")
     {:continue, state}
   end
 
@@ -79,7 +81,7 @@ defmodule Sippet.Transports.TCP.Server do
 
   @impl ThousandIsland.Handler
   def handle_timeout(_socket, state) do
-    #peer = Socket.peer_info(socket)
+    # peer = Socket.peer_info(socket)
 
     {:close, state}
   end
@@ -92,7 +94,7 @@ defmodule Sippet.Transports.TCP.Server do
       ssl_cert: _ssl_cert
     } = Socket.peer_info(socket)
 
-    unregister_conn(state[:connections], host, port)
+    disconnect(state[:connections], host, port)
 
     Logger.debug(
       "shutting down handler #{inspect(self())} : #{inspect(stringify_hostport(host, port))}"
