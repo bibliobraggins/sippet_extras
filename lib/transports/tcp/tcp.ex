@@ -8,7 +8,8 @@ defmodule Sippet.Transports.TCP do
   require Logger
 
   alias Sippet.Message, as: Message
-  alias Sippet.Transports.Connections, as: Connections
+  alias Message.RequestLine, as: Request
+  # alias Message.StatusLine, as: Response
   alias Sippet.Transports.TCP.Server, as: Server
 
   @doc false
@@ -74,75 +75,88 @@ defmodule Sippet.Transports.TCP do
                 ":address contains an invalid IP or DNS name, got: #{inspect(reason)}"
       end
 
+    connections =
+      case :ets.new(:"#{name}_connections", [:named_table, :set, :public, {:write_concurrency, true}]) do
+        table_name when is_atom(table_name) ->
+          table_name
+        _ ->
+          raise "could not start named table :#{name}_connections"
+      end
+
     GenServer.start_link(__MODULE__,
       name: name,
       ip: ip,
       port: port,
       family: family,
-      registry: :"#{name}_registry"
+      connections: connections,
+      clients: :"#{options[:name]}_client_sup"
     )
   end
 
+  def key(host, port), do: :erlang.term_to_binary({host, port})
+  def register_conn(connections, host, port, handler), do: :ets.insert_new(connections, {key(host, port), handler})
+  def unregister_conn(connections, host, port), do: :ets.delete(connections, key(host, port))
+  def lookup_conn(connections, host, port), do: :ets.lookup(connections, key(host, port))
+
+  def resolve_name(host, family) do
+    host
+    |> String.to_charlist()
+    |> :inet.getaddr(family)
+  end
+
+  @spec resolve_name(binary, atom, :naptr|:srv|:a) :: :todo
+  def resolve_name(_host, _family, _type), do: :todo
+
   @impl true
-  def init(state) do
-    {:ok, nil, {:continue, state}}
+  def init(options) do
+    {:ok, nil, {:continue, options}}
   end
 
   @impl true
-  def handle_continue(state, nil) do
+  def handle_continue(options, nil) do
     children = [
-      {Connections, state[:registry]},
+      {DynamicSupervisor, name: options[:clients]},
       {ThousandIsland,
-       port: state[:port],
-       transport_options: [ip: state[:ip]],
+       port: options[:port],
+       transport_options: [ip: options[:ip]],
        handler_module: Server,
        handler_options: [
-         name: state[:name],
-         family: state[:family],
-         registry: state[:registry]
+         name: options[:name],
+         family: options[:family],
+         connections: options[:connections]
        ]}
     ]
 
     with {:ok, _pid} <- Supervisor.start_link(children, strategy: :one_for_one),
-         :ok <- Sippet.register_transport(state[:name], :tcp, true) do
-          {:noreply, state}
+         :ok <- Sippet.register_transport(options[:name], :tcp, true) do
+          {:noreply, options}
     else
       error ->
         Logger.error("could not start tcp socket, reason: #{inspect(error)}")
         Process.sleep(5_000)
-        {:noreply, nil, {:continue, state}}
+        {:noreply, nil, {:continue, options}}
     end
   end
 
   @impl true
-  def handle_call({:send_message, %Message{} = message, to_host, to_port, key}, _from, state) do
-    with {:ok, to_ip} <- resolve_name(to_host, state[:family]),
-         {:ok, handler} when is_pid(handler) <- lookup_conn(state[:registry], to_ip, to_port) do
-      send(handler, {:send_message, message})
+  def handle_call({:send_message, %Message{start_line: %Request{}} = message, to_host, to_port, key}, _from, state) do
+    # if the message is a request and we have no pid available for a given peer,
+    # we spawn a Client GenServer that spawns a socket in active mode for the
+    # transaction.
+
+    with {:ok, _to_ip} <- resolve_name(to_host, state[:family]) do
+      case lookup_conn(state[:connections], to_host, to_port) do
+        [{_key, handler}] when is_pid(handler) ->
+          send(handler, {:send_message, message})
+        [] ->
+          nil
+          #DynamicSupervisor.start_child(state[:clients], )
+      end
     else
       error ->
         Logger.error("problem sending message #{inspect(key)}, reason: #{inspect(error)}")
     end
 
     {:reply, :ok, state}
-  end
-
-  defp lookup_conn(registry, to_host, to_port) do
-    try do
-      GenServer.call(registry, {:lookup, to_host, to_port}, 5000)
-    rescue
-      reason ->
-        Logger.emergency(
-          "could not lookup handler pid, registry process is not responsive, reason: #{inspect(reason)}"
-        )
-
-        {:error, reason}
-    end
-  end
-
-  def resolve_name(host, family) do
-    host
-    |> String.to_charlist()
-    |> :inet.getaddr(family)
   end
 end

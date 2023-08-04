@@ -120,8 +120,6 @@ defmodule Sippet.Transports.TCP.Client do
       {:ok, socket} ->
         state = struct(__MODULE__, Keyword.put(options, :socket, socket))
 
-
-
         :gen_tcp.send(socket, options[:start_message])  |> inspect() |> Logger.debug()
 
         {:noreply, state}
@@ -157,8 +155,8 @@ defmodule Sippet.Transports.TCP.Client do
   end
 
   @impl true
-  def handle_info({:tcp, socket, data = %Msg{}}, state) do
-    Logger.debug("#{inspect(socket)} recevied message: #{inspect(data)}")
+  def handle_info({:tcp, socket, data}, state) do
+    Logger.debug("#{inspect(socket)} recevied raw: #{inspect(data)}")
 
     {:noreply, state}
   end
@@ -185,10 +183,14 @@ end
 defmodule Sippet.Transports.TCP.ClientSupervisor do
   use DynamicSupervisor
 
-  def start_link(options) do
-    DynamicSupervisor.start_link(__MODULE__, options, name: options[:interface])
+  @spec start_link(nil | maybe_improper_list | map) :: :ignore | {:error, any} | {:ok, pid}
+  def start_link(name) do
+    name = :"#{name}_client_sup"
+
+    DynamicSupervisor.start_link(__MODULE__, [], name: name)
   end
 
+  @spec start_client(any) :: :ignore | {:error, any} | {:ok, pid} | {:ok, pid, any}
   def start_client(client_options) do
     spec = {
       Sippet.Transports.TCP.Client,

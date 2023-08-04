@@ -22,8 +22,10 @@ defmodule SippetExtras.MixProject do
   defp deps do
     [
       {:sippet, "~> 1.0.1"},
+
       {:thousand_island, "~> 0.6.7"},
-      {:websock, "~> 0.5.2"}
+      {:bandit, "~> 0.7.7"},
+      {:httpoison, "~> 2.1"}
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]

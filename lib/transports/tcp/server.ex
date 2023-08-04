@@ -4,6 +4,8 @@ defmodule Sippet.Transports.TCP.Server do
   alias ThousandIsland
   alias ThousandIsland.Socket
 
+  import Sippet.Transports.TCP
+
   require Logger
 
   alias Sippet.Message, as: Message
@@ -12,13 +14,19 @@ defmodule Sippet.Transports.TCP.Server do
   def handle_connection(socket, state) do
     peer = Socket.peer_info(socket)
 
-    register_conn(state[:registry], peer.address, peer.port)
+    register_conn(state[:connections], peer.address, peer.port, self())
 
     {:continue, state}
   end
 
   @impl ThousandIsland.Handler
+  def handle_data(<<255, 244, 255, 253, 6>>, _socket, state) do
+    {:close, state}
+  end
+
+  @impl ThousandIsland.Handler
   def handle_data("\r\n\r\n", _socket, state) do
+    Logger.debug("got kepalive: #{inspect(self())}")
     {:continue, state}
   end
 
@@ -36,7 +44,7 @@ defmodule Sippet.Transports.TCP.Server do
 
       _ ->
         Logger.warning(
-          "could not parse message #{data} from #{inspect(peer.address)}:#{inspect(peer.port)}"
+          "could not parse message #{inspect(data)} from #{inspect(peer.address)}:#{inspect(peer.port)}"
         )
     end
 
@@ -57,58 +65,38 @@ defmodule Sippet.Transports.TCP.Server do
   end
 
   @impl ThousandIsland.Handler
-  def handle_error(reason, _socket, state) do
+  def handle_error(reason, socket, state) do
     Logger.error("#{inspect(reason)}")
+    peer = Socket.peer_info(socket)
+    unregister_conn(state[:connections], peer.address, peer.port)
 
     {:continue, state}
   end
 
   @impl ThousandIsland.Handler
   def handle_timeout(socket, state) do
-    _peer = Socket.peer_info(socket)
+    peer = Socket.peer_info(socket)
+
+    unregister_conn(state[:connections], peer.address, peer.port)
 
     {:close, state}
   end
 
   @impl ThousandIsland.Handler
-  def handle_shutdown(socket, _state) do
+  def handle_shutdown(socket, state) do
     %{
-      address: address,
+      address: host,
       port: port,
       ssl_cert: _ssl_cert
     } = Socket.peer_info(socket)
 
+    unregister_conn(state[:connections], host, port)
+
     Logger.debug(
-      "shutting down handler #{inspect(self())} : #{inspect(stringify_hostport(address, port))}"
+      "shutting down handler #{inspect(self())} : #{inspect(stringify_hostport(host, port))}"
     )
 
     :ok
-  end
-
-  defp register_conn(registry, to_host, to_port) do
-    try do
-      GenServer.call(registry, {:register, to_host, to_port})
-    rescue
-      reason ->
-        Logger.emergency(
-          "could not lookup handler pid, registry process is not responsive, reason: #{inspect(reason)}"
-        )
-
-        {:error, reason}
-    end
-  end
-
-  def unregister_conn(registry, to_host, to_port) do
-    try do
-      GenServer.call(registry, {:unregister, to_host, to_port})
-    rescue
-      reason ->
-        Logger.emergency(
-          "could not lookup handler pid, registry process is not responsive, reason: #{inspect(reason)}"
-        )
-
-        {:error, reason}
-    end
   end
 
   def stringify_sockname(socket) do
