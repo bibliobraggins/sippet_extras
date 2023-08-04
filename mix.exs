@@ -22,7 +22,6 @@ defmodule SippetExtras.MixProject do
   defp deps do
     [
       {:sippet, "~> 1.0.1"},
-
       {:thousand_island, "~> 0.6.7"},
       {:bandit, "~> 0.7.7"},
       {:httpoison, "~> 2.1"}
