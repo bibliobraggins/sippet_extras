@@ -14,13 +14,18 @@ defmodule Sippet.Transports.TCP.Server do
   def handle_connection(socket, state) do
     peer = Socket.peer_info(socket)
 
-    register_conn(state[:connections], peer.address, peer.port, self())
+    peer |> inspect() |> Logger.info()
+
+    register_conn(state[:connections], peer.address, peer.port, self()) |> inspect() |> Logger.info()
+
+    key(peer.address, peer.port) |> inspect() |> Logger.info()
 
     {:continue, state}
   end
 
   @impl ThousandIsland.Handler
   def handle_data(<<255, 244, 255, 253, 6>>, _socket, state) do
+    Logger.warning("got ^C ::  #{inspect(<<255, 244, 255, 253, 6>>)} :: CLOSING CONNECTION")
     {:close, state}
   end
 
@@ -65,19 +70,16 @@ defmodule Sippet.Transports.TCP.Server do
   end
 
   @impl ThousandIsland.Handler
-  def handle_error(reason, socket, state) do
+  def handle_error(reason, _socket, state) do
     Logger.error("#{inspect(reason)}")
-    peer = Socket.peer_info(socket)
-    unregister_conn(state[:connections], peer.address, peer.port)
+    # peer = Socket.peer_info(socket)
 
     {:continue, state}
   end
 
   @impl ThousandIsland.Handler
-  def handle_timeout(socket, state) do
-    peer = Socket.peer_info(socket)
-
-    unregister_conn(state[:connections], peer.address, peer.port)
+  def handle_timeout(_socket, state) do
+    #peer = Socket.peer_info(socket)
 
     {:close, state}
   end

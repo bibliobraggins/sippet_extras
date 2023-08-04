@@ -79,7 +79,7 @@ defmodule Sippet.Transports.TCP.Client do
     # initial message to transmit on behalf of downstream client
     start_message =
       with {:ok, start_message} <- Keyword.fetch(options, :start_message) do
-          # true <- Msg.valid?(start_message) do
+        # true <- Msg.valid?(start_message) do
         start_message
       else
         _ ->
@@ -120,7 +120,7 @@ defmodule Sippet.Transports.TCP.Client do
       {:ok, socket} ->
         state = struct(__MODULE__, Keyword.put(options, :socket, socket))
 
-        :gen_tcp.send(socket, options[:start_message])  |> inspect() |> Logger.debug()
+        :gen_tcp.send(socket, options[:start_message]) |> inspect() |> Logger.debug()
 
         {:noreply, state}
 
@@ -177,7 +177,6 @@ defmodule Sippet.Transports.TCP.Client do
 
   @impl true
   def handle_info(_, state), do: {:noreply, state}
-
 end
 
 defmodule Sippet.Transports.TCP.ClientSupervisor do

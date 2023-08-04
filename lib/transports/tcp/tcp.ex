@@ -9,7 +9,7 @@ defmodule Sippet.Transports.TCP do
 
   alias Sippet.Message, as: Message
   alias Message.RequestLine, as: Request
-  # alias Message.StatusLine, as: Response
+  alias Message.StatusLine, as: Response
   alias Sippet.Transports.TCP.Server, as: Server
 
   @doc false
@@ -76,9 +76,15 @@ defmodule Sippet.Transports.TCP do
       end
 
     connections =
-      case :ets.new(:"#{name}_connections", [:named_table, :set, :public, {:write_concurrency, true}]) do
+      case :ets.new(:"#{name}_connections", [
+             :named_table,
+             :set,
+             :public,
+             {:write_concurrency, true}
+           ]) do
         table_name when is_atom(table_name) ->
           table_name
+
         _ ->
           raise "could not start named table :#{name}_connections"
       end
@@ -94,9 +100,14 @@ defmodule Sippet.Transports.TCP do
   end
 
   def key(host, port), do: :erlang.term_to_binary({host, port})
-  def register_conn(connections, host, port, handler), do: :ets.insert_new(connections, {key(host, port), handler})
-  def unregister_conn(connections, host, port), do: :ets.delete(connections, key(host, port))
-  def lookup_conn(connections, host, port), do: :ets.lookup(connections, key(host, port))
+
+  def register_conn(connections, host, port, handler),
+    do: :ets.insert_new(connections, {key(host, port), handler})
+
+  def unregister_conn(connections, host, port),
+    do: :ets.delete(connections, key(host, port))
+  def lookup_conn(connections, host, port),
+    do: :ets.lookup(connections, key(host, port))
 
   def resolve_name(host, family) do
     host
@@ -104,7 +115,7 @@ defmodule Sippet.Transports.TCP do
     |> :inet.getaddr(family)
   end
 
-  @spec resolve_name(binary, atom, :naptr|:srv|:a) :: :todo
+  @spec resolve_name(binary, atom, :naptr | :srv | :a) :: :todo
   def resolve_name(_host, _family, _type), do: :todo
 
   @impl true
@@ -129,7 +140,7 @@ defmodule Sippet.Transports.TCP do
 
     with {:ok, _pid} <- Supervisor.start_link(children, strategy: :one_for_one),
          :ok <- Sippet.register_transport(options[:name], :tcp, true) do
-          {:noreply, options}
+      {:noreply, options}
     else
       error ->
         Logger.error("could not start tcp socket, reason: #{inspect(error)}")
@@ -138,24 +149,47 @@ defmodule Sippet.Transports.TCP do
     end
   end
 
-  @impl true
-  def handle_call({:send_message, %Message{start_line: %Request{}} = message, to_host, to_port, key}, _from, state) do
-    # if the message is a request and we have no pid available for a given peer,
-    # we spawn a Client GenServer that spawns a socket in active mode for the
-    # transaction.
-
-    with {:ok, _to_ip} <- resolve_name(to_host, state[:family]) do
-      case lookup_conn(state[:connections], to_host, to_port) do
+  defp lookup_and_send(connections, to_host, to_port, family, message, key) do
+    with {:ok, to_ip} <- resolve_name(to_host, family) do
+      case lookup_conn(connections, to_ip, to_port) do
         [{_key, handler}] when is_pid(handler) ->
           send(handler, {:send_message, message})
         [] ->
           nil
-          #DynamicSupervisor.start_child(state[:clients], )
+          # DynamicSupervisor.start_child(state[:clients], )
       end
     else
       error ->
         Logger.error("problem sending message #{inspect(key)}, reason: #{inspect(error)}")
     end
+  end
+
+  @impl true
+  def handle_call(
+        {:send_message, %Message{start_line: %Request{}} = _message, _to_host, _to_port, _key},
+        _from,
+        state
+      ) do
+    # if the message is a request and we have no pid available for a given peer,
+    # we spawn a Client GenServer that spawns a socket in active mode for the
+    # transaction.
+
+    # lookup_conn(state[:connections], to_host, to_port)
+
+
+    {:reply, :ok, state}
+  end
+
+  @impl true
+  def handle_call(
+        {:send_message, %Message{start_line: %Response{}} = message, to_host, to_port, key},
+        _from,
+        state
+      ) do
+    # if the message is a request and we have no pid available for a given peer,
+    # we spawn a Client GenServer that spawns a socket in active mode for the
+    # transaction.
+    lookup_and_send(state[:connections], to_host, to_port, state[:family], message, key)
 
     {:reply, :ok, state}
   end
