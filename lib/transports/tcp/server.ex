@@ -35,19 +35,11 @@ defmodule Sippet.Transports.TCP.Server do
   def handle_data(data, socket, state) do
     peer = Socket.peer_info(socket)
 
-    case Message.parse(data) do
-      {:ok, %Message{}} ->
-        Sippet.Router.handle_transport_message(
-          state[:name],
-          data,
-          {:tcp, peer.address, peer.port}
-        )
-
-      _ ->
-        Logger.warning(
-          "could not parse message #{inspect(data)} from #{inspect(peer.address)}:#{inspect(peer.port)}"
-        )
-    end
+    Sippet.Router.handle_transport_message(
+      state[:name],
+      data,
+      {:tcp, peer.address, peer.port}
+    )
 
     {:continue, state}
   end

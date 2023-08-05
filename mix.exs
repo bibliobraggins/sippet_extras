@@ -1,9 +1,9 @@
-defmodule Spile.MixProject do
+defmodule Spigot.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :spile,
+      app: :spigot,
       version: "0.1.0",
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,

@@ -1,4 +1,4 @@
-defmodule Spile.Router do
+defmodule Spigot.Router do
   alias Sippet.Message, as: MSG
   alias MSG.RequestLine, as: REQ
   # alias MSG.StatusLine, as: RESP
@@ -10,7 +10,7 @@ defmodule Spile.Router do
 
   defmacro __using__(opts) do
     quote location: :keep do
-      import Spile.Router
+      import Spigot.Router
       use Sippet.Core
 
       def send_resp(%MSG{start_line: %REQ{}} = req, status_code), do: Sippet.send(unquote(opts[:name]), MSG.to_response(req, status_code))

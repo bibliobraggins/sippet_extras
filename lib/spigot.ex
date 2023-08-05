@@ -1,6 +1,6 @@
-defmodule Spile do
+defmodule Spigot do
   @moduledoc """
-  Documentation for `Spile`.
+  Documentation for `Spigot`.
   """
 
   @doc """
@@ -8,7 +8,7 @@ defmodule Spile do
 
   ## Examples
 
-      iex> Spile.hello()
+      iex> Spigot.hello()
       :world
 
   """
@@ -25,7 +25,7 @@ defmodule Spile do
       end
 
     with {:ok, _pid} <- Sippet.start_link(name: :test),
-         {:ok, _pid} <- transport.start_link(name: :test, port: 5060) do
+         {:ok, _pid} <- transport.start_link(name: :test, port: 5065, address: "0.0.0.0") do
       build_core([name: :test])
     else
       reason ->
@@ -41,7 +41,7 @@ defmodule Spile do
       @opts opts
 
       require Logger
-      use Spile.Router, [name: @opts[:name]]
+      use Spigot.Router, [name: @opts[:name]]
 
       def register(req, _key) do
         Logger.debug(to_string(req))
