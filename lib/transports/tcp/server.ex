@@ -14,11 +14,7 @@ defmodule Sippet.Transports.TCP.Server do
   def handle_connection(socket, state) do
     peer = Socket.peer_info(socket)
 
-    peer |> inspect() |> Logger.info()
-
-    register_conn(state[:connections], peer.address, peer.port, self()) |> inspect() |> Logger.info()
-
-    key(peer.address, peer.port) |> inspect() |> Logger.info()
+    connect(state[:connections], peer.address, peer.port, self())
 
     {:continue, state}
   end
@@ -30,8 +26,8 @@ defmodule Sippet.Transports.TCP.Server do
   end
 
   @impl ThousandIsland.Handler
-  def handle_data("\r\n\r\n", _socket, state) do
-    Logger.debug("got kepalive: #{inspect(self())}")
+  def handle_data("\r\n\r\n", socket, state) do
+    Logger.debug("got keepalive: #{inspect(Socket.peer_info(socket))}")
     {:continue, state}
   end
 
@@ -39,19 +35,11 @@ defmodule Sippet.Transports.TCP.Server do
   def handle_data(data, socket, state) do
     peer = Socket.peer_info(socket)
 
-    case Message.parse(data) do
-      {:ok, %Message{}} ->
-        Sippet.Router.handle_transport_message(
-          state[:name],
-          data,
-          {:tcp, peer.address, peer.port}
-        )
-
-      _ ->
-        Logger.warning(
-          "could not parse message #{inspect(data)} from #{inspect(peer.address)}:#{inspect(peer.port)}"
-        )
-    end
+    Sippet.Router.handle_transport_message(
+      state[:name],
+      data,
+      {:tcp, peer.address, peer.port}
+    )
 
     {:continue, state}
   end
@@ -79,7 +67,7 @@ defmodule Sippet.Transports.TCP.Server do
 
   @impl ThousandIsland.Handler
   def handle_timeout(_socket, state) do
-    #peer = Socket.peer_info(socket)
+    # peer = Socket.peer_info(socket)
 
     {:close, state}
   end
@@ -92,24 +80,13 @@ defmodule Sippet.Transports.TCP.Server do
       ssl_cert: _ssl_cert
     } = Socket.peer_info(socket)
 
-    unregister_conn(state[:connections], host, port)
+    disconnect(state[:connections], host, port)
 
     Logger.debug(
       "shutting down handler #{inspect(self())} : #{inspect(stringify_hostport(host, port))}"
     )
 
     :ok
-  end
-
-  def stringify_sockname(socket) do
-    {:ok, {ip, port}} = :inet.sockname(socket)
-
-    address =
-      ip
-      |> :inet_parse.ntoa()
-      |> to_string()
-
-    "#{address}:#{port}"
   end
 
   def stringify_hostport(host, port) do
