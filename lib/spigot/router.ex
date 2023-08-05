@@ -8,35 +8,69 @@ defmodule Spigot.Router do
              String.downcase(method) |> String.to_existing_atom()
            end)
 
-  defmacro __using__(opts) do
+  defmacro __using__(options) do
     quote location: :keep do
       import Spigot.Router
       use Sippet.Core
 
+      def init(), do: Sippet.register_core(unquote(options[:name]), __MODULE__)
+
       def send_resp(%MSG{start_line: %REQ{}} = req, status_code),
-        do: Sippet.send(unquote(opts[:name]), MSG.to_response(req, status_code))
+        do: Sippet.send(unquote(options[:name]), MSG.to_response(req, status_code))
 
-      def send_resp(%MSG{start_line: %REQ{}} = req, status_code, reason) when is_binary(reason) do
-        Sippet.send(unquote(opts[:name]), MSG.to_response(req, status_code, reason))
-      end
+      def send_resp(%MSG{start_line: %REQ{}} = req, status_code, reason) when is_binary(reason),
+        do: Sippet.send(unquote(options[:name]), MSG.to_response(req, status_code, reason))
 
-      def ack(_, _), do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
-      def bye(_, _), do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
-      def cancel(_, _), do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
-      def info(_, _), do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
-      def invite(_, _), do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
-      def message(_, _), do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
-      def notify(_, _), do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
-      def options(_, _), do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
-      def prack(_, _), do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
-      def publish(_, _), do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
-      def pull(_, _), do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
-      def push(_, _), do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
-      def refer(_, _), do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
-      def register(_, _), do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
-      def store(_, _), do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
-      def subscribe(_, _), do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
-      def update(_, _), do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
+      def ack(_, _),
+        do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
+
+      def bye(_, _),
+        do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
+
+      def cancel(_, _),
+        do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
+
+      def info(_, _),
+        do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
+
+      def invite(_, _),
+        do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
+
+      def message(_, _),
+        do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
+
+      def notify(_, _),
+        do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
+
+      def options(_, _),
+        do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
+
+      def prack(_, _),
+        do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
+
+      def publish(_, _),
+        do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
+
+      def pull(_, _),
+        do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
+
+      def push(_, _),
+        do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
+
+      def refer(_, _),
+        do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
+
+      def register(_, _),
+        do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
+
+      def store(_, _),
+        do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
+
+      def subscribe(_, _),
+        do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
+
+      def update(_, _),
+        do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
 
       @doc false
       def receive_request(%MSG{start_line: %REQ{}} = msg, key) do
@@ -48,14 +82,12 @@ defmodule Spigot.Router do
       end
 
       @doc false
-      def receive_response(incoming_response, client_key) do
-        raise "attempted to call Core but no receive_response/2 was provided"
-      end
+      def receive_response(incoming_response, client_key),
+        do: raise("TODO: attempted to call Router but no receive_response/2 was provided")
 
       @doc false
-      def receive_error(reason, client_or_server_key) do
-        raise "attempted to call Core but no receive_error/2 was provided"
-      end
+      def receive_error(reason, client_or_server_key),
+        do: raise("TODO: attempted to call Router but no receive_error/2 was provided")
 
       defoverridable ack: 2,
                      bye: 2,

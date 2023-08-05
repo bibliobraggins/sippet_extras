@@ -1,59 +1,62 @@
 defmodule Spigot do
-  @moduledoc """
-  Documentation for `Spigot`.
-  """
+  require Logger
+  alias Sippet.Transports.TCP, as: TCP
+  alias Sippet.Transports.UDP, as: UDP
 
-  @doc """
-  Hello world.
+  # options = [
+  #  :name,
+  #  :transport,
+  #  :address,
+  #  :port,
+  #  :family,
+  #  :router
 
-  ## Examples
-
-      iex> Spigot.hello()
-      :world
-
-  """
-  def demo(transport) do
-    alias Sippet.Transports.TCP, as: TCP
-    alias Sippet.Transports.UDP, as: UDP
+  def start(options) do
+    router =
+      if is_nil(options[:router]) do
+        raise "a router module must be provided to build a spigot"
+      else
+        options[:router]
+      end
 
     transport =
-      case transport do
-        :tcp ->
-          TCP
-
-        :udp ->
-          UDP
-
-        unsupported ->
-          raise "transport option rejected: #{inspect(unsupported)}"
+      if is_nil(options[:transport]) do
+        raise "a transport module must be provided to build a spigot"
+      else
+        transport(options[:transport])
       end
 
-    with {:ok, _pid} <- Sippet.start_link(name: :test),
-         {:ok, _pid} <- transport.start_link(name: :test, port: 5065, address: "127.0.0.1") do
-      build_core(name: :test)
+    if is_nil(options[:name]) do
+      raise "a name must be provided to build a spigot"
+    end
+
+    with {:ok, _pid} <- Sippet.start_link(name: options[:name]),
+         {:ok, _pid} <- transport.start_link(options),
+         :ok <- Sippet.register_core(options[:name], router) do
+          :ok
     else
-      reason ->
-        raise "couldn't start test stack: reason #{inspect(reason)}"
+      error -> raise "#{inspect(error)}"
     end
   end
 
-  defp build_core(opts) do
-    module = :"#{opts[:name]}.CORE"
+  defp transport(transport) do
+    case transport do
+      :tcp ->
+        TCP
 
-    defmodule module do
-      require Logger
+      :udp ->
+        UDP
 
-      @opts opts
-
-      require Logger
-      use Spigot.Router, name: @opts[:name]
-
-      def register(req, _key) do
-        Logger.debug(to_string(req))
-        send_resp(req, 200)
-      end
+      unsupported ->
+        raise "transport option rejected: #{inspect(unsupported)}"
     end
-
-    Sippet.register_core(opts[:name], module)
   end
+
+  @moduledoc """
+  Documentation for `Spigot`.
+    def register(req, _key) do
+    Logger.debug(to_string(req))
+    send_resp(req, 200)
+  end
+  """
 end
