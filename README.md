@@ -10,7 +10,7 @@ by adding `Spigot` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:Spigot, "~> 0.1.0"}
+    {:spigot, "~> 0.1.0"}
   ]
 end
 ```
