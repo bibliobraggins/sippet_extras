@@ -1,9 +1,9 @@
-defmodule SippetExtras.MixProject do
+defmodule Spile.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :sippet_extras,
+      app: :spile,
       version: "0.1.0",
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,

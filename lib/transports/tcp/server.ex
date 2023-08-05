@@ -14,13 +14,7 @@ defmodule Sippet.Transports.TCP.Server do
   def handle_connection(socket, state) do
     peer = Socket.peer_info(socket)
 
-    peer |> inspect() |> Logger.info()
-
     connect(state[:connections], peer.address, peer.port, self())
-    |> inspect()
-    |> Logger.info()
-
-    key(peer.address, peer.port) |> inspect() |> Logger.info()
 
     {:continue, state}
   end
@@ -32,8 +26,8 @@ defmodule Sippet.Transports.TCP.Server do
   end
 
   @impl ThousandIsland.Handler
-  def handle_data("\r\n\r\n", _socket, state) do
-    Logger.debug("got keepalive: #{inspect(self())}")
+  def handle_data("\r\n\r\n", socket, state) do
+    Logger.debug("got keepalive: #{inspect(Socket.peer_info(socket))}")
     {:continue, state}
   end
 

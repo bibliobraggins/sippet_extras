@@ -100,10 +100,13 @@ defmodule Sippet.Transports.TCP do
   end
 
   def key(host, port), do: :erlang.term_to_binary({host, port})
+
   def connect(connections, host, port, handler),
     do: :ets.insert_new(connections, {key(host, port), handler})
+
   def disconnect(connections, host, port),
     do: :ets.delete(connections, key(host, port))
+
   def lookup_conn(connections, host, port),
     do: :ets.lookup(connections, key(host, port))
 
