@@ -99,26 +99,6 @@ defmodule Sippet.Transports.TCP do
     )
   end
 
-  def key(host, port), do: :erlang.term_to_binary({host, port})
-
-  def connect(connections, host, port, handler),
-    do: :ets.insert_new(connections, {key(host, port), handler})
-
-  def disconnect(connections, host, port),
-    do: :ets.delete(connections, key(host, port))
-
-  def lookup_conn(connections, host, port),
-    do: :ets.lookup(connections, key(host, port))
-
-  def resolve_name(host, family) do
-    host
-    |> String.to_charlist()
-    |> :inet.getaddr(family)
-  end
-
-  @spec resolve_name(binary, atom, :naptr | :srv | :a) :: :todo
-  def resolve_name(_host, _family, _type), do: :todo
-
   @impl true
   def init(options) do
     {:ok, nil, {:continue, options}}
@@ -141,6 +121,10 @@ defmodule Sippet.Transports.TCP do
 
     with {:ok, _pid} <- Supervisor.start_link(children, strategy: :one_for_one),
          :ok <- Sippet.register_transport(options[:name], :tcp, true) do
+      Logger.debug(
+        "#{inspect(self())} started transport #{stringify_sockname(options[:ip], options[:port])}/tcp"
+      )
+
       {:noreply, options}
     else
       error ->
@@ -193,5 +177,34 @@ defmodule Sippet.Transports.TCP do
     lookup_and_send(state[:connections], to_host, to_port, state[:family], message, key)
 
     {:reply, :ok, state}
+  end
+
+  def key(host, port), do: :erlang.term_to_binary({host, port})
+
+  def connect(connections, host, port, handler),
+    do: :ets.insert_new(connections, {key(host, port), handler})
+
+  def disconnect(connections, host, port),
+    do: :ets.delete(connections, key(host, port))
+
+  def lookup_conn(connections, host, port),
+    do: :ets.lookup(connections, key(host, port))
+
+  def resolve_name(host, family) do
+    host
+    |> String.to_charlist()
+    |> :inet.getaddr(family)
+  end
+
+  @spec resolve_name(binary, atom, :naptr | :srv | :a) :: :todo
+  def resolve_name(_host, _family, _type), do: :todo
+
+  def stringify_sockname(ip, port) do
+    address =
+      ip
+      |> :inet_parse.ntoa()
+      |> to_string()
+
+    "#{address}:#{port}"
   end
 end

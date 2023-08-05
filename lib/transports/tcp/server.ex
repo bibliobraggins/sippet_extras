@@ -89,17 +89,6 @@ defmodule Sippet.Transports.TCP.Server do
     :ok
   end
 
-  def stringify_sockname(socket) do
-    {:ok, {ip, port}} = :inet.sockname(socket)
-
-    address =
-      ip
-      |> :inet_parse.ntoa()
-      |> to_string()
-
-    "#{address}:#{port}"
-  end
-
   def stringify_hostport(host, port) do
     "#{host}:#{port}"
   end
