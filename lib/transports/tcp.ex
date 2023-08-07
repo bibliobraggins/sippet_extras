@@ -75,19 +75,12 @@ defmodule Sippet.Transports.TCP do
                 ":address contains an invalid IP or DNS name, got: #{inspect(reason)}"
       end
 
-    connections =
-      case :ets.new(:"#{name}_connections", [
+    connections = :ets.new(:"#{name}_connections", [
              :named_table,
              :set,
              :public,
              {:write_concurrency, true}
-           ]) do
-        table_name when is_atom(table_name) ->
-          table_name
-
-        _ ->
-          raise "could not start named table :#{name}_connections"
-      end
+           ])
 
     GenServer.start_link(__MODULE__,
       name: name,
@@ -134,22 +127,6 @@ defmodule Sippet.Transports.TCP do
     end
   end
 
-  defp lookup_and_send(connections, to_host, to_port, family, message, key) do
-    with {:ok, to_ip} <- resolve_name(to_host, family) do
-      case lookup_conn(connections, to_ip, to_port) do
-        [{_key, handler}] when is_pid(handler) ->
-          send(handler, {:send_message, message})
-
-        [] ->
-          nil
-          # DynamicSupervisor.start_child(state[:clients], )
-      end
-    else
-      error ->
-        Logger.error("problem sending message #{inspect(key)}, reason: #{inspect(error)}")
-    end
-  end
-
   @impl true
   def handle_call(
         {:send_message, %Message{start_line: %Request{}} = _message, _to_host, _to_port, _key},
@@ -189,6 +166,22 @@ defmodule Sippet.Transports.TCP do
 
   def lookup_conn(connections, host, port),
     do: :ets.lookup(connections, key(host, port))
+
+  defp lookup_and_send(connections, to_host, to_port, family, message, key) do
+    with {:ok, to_ip} <- resolve_name(to_host, family) do
+      case lookup_conn(connections, to_ip, to_port) do
+        [{_key, handler}] when is_pid(handler) ->
+          send(handler, {:send_message, message})
+
+        [] ->
+          nil
+          # DynamicSupervisor.start_child(state[:clients], )
+      end
+    else
+      error ->
+        Logger.error("problem sending message #{inspect(key)}, reason: #{inspect(error)}")
+    end
+  end
 
   def resolve_name(host, family) do
     host

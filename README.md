@@ -9,30 +9,15 @@ aimed features:
 ## Example
 
 ```elixir
-defmodule MySipElement do
-  use Spigot.Router, options
-  # MySipElement.start_link(name: :my_agent, port: 5060, address: "127.0.0.1")
-
-  def start(options) do
-
-    with {:ok, pid} <- Sippet.start_link(name: options[:name]), 
-        {:ok, pid} <- Sippet.Transport.TCP.start_link(options) 
-        do
-          
-        else
-          reason -> 
-            raise "problem "
-        end
-  end
-end
-
 defmodule MyUserAgent do 
-  use Spigot.Router, name: my_agent
+  use Spigot.Router, name: :my_agent
   # define routes
   def register(msg, key) do
     send_resp(msg, 200)
   end
 end
+
+Spigot.start(name: :my_agent, port: 5060, transport: :tcp, user_agent: MyUserAgent)
 ```
 
 ## Installation

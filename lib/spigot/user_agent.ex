@@ -1,7 +1,8 @@
-defmodule Spigot.Router do
-  alias Sippet.Message, as: MSG
-  alias MSG.RequestLine, as: REQ
-  # alias MSG.StatusLine, as: RESP
+defmodule Spigot.UserAgent do
+  alias Sippet.Message, as: Msg
+  alias Msg.RequestLine, as: Req
+  alias Msg.StatusLine, as: Resp
+  alias Sippet.DigestAuth, as: DigestAuth
 
   # "ACK", "BYE", "CANCEL", "INFO", "INVITE", "MESSAGE", "NOTIFY", "OPTIONS","PRACK", "PUBLISH", "PULL", "PUSH", "REFER", "REGISTER", "STORE", "SUBSCRIBE","UPDATE"
   @methods Enum.into(Sippet.Message.known_methods(), [], fn method ->
@@ -10,74 +11,84 @@ defmodule Spigot.Router do
 
   defmacro __using__(options) do
     quote location: :keep do
-      import Spigot.Router
+      import Spigot.UserAgent
       use Sippet.Core
 
-      def init(), do: Sippet.register_core(unquote(options[:name]), __MODULE__)
+      def challenge(%Msg{start_line: %Req{}} = req, status, realm) do
+        {:ok, challenge} = DigestAuth.make_response(req, status, realm)
+        challenge
+      end
 
-      def send_resp(%MSG{start_line: %REQ{}} = req, status_code),
-        do: Sippet.send(unquote(options[:name]), MSG.to_response(req, status_code))
+      def authorize(%Msg{start_line: %Req{request_uri: %Sippet.URI{host: realm}}} = req, resp, options \\ []) do
+        {:ok, auth_req} = DigestAuth.make_request(req, resp, realm, options)
+      end
 
-      def send_resp(%MSG{start_line: %REQ{}} = req, status_code, reason) when is_binary(reason),
-        do: Sippet.send(unquote(options[:name]), MSG.to_response(req, status_code, reason))
+      defp do_send(%Msg{start_line: %Resp{}} = resp), do: Sippet.send(unquote(options[:name]), resp)
 
-      def ack(_, _),
+      def send_resp(%Msg{start_line: %Resp{}} = resp), do: send_resp(resp)
+
+      def send_resp(%Msg{start_line: %Req{}} = req, status), do: Msg.to_response(req, status) |> send_resp()
+
+      def send_resp(%Msg{start_line: %Req{}} = req, status, reason) when is_binary(reason),
+        do: Msg.to_response(req, status, reason) |> send_resp()
+
+      def ack(%Msg{start_line: %Req{}}, _),
         do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
 
-      def bye(_, _),
+      def bye(%Msg{start_line: %Req{}}, _),
         do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
 
-      def cancel(_, _),
+      def cancel(%Msg{start_line: %Req{}}, _),
         do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
 
-      def info(_, _),
+      def info(%Msg{start_line: %Req{}}, _),
         do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
 
-      def invite(_, _),
+      def invite(%Msg{start_line: %Req{}}, _),
         do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
 
-      def message(_, _),
+      def message(%Msg{start_line: %Req{}}, _),
         do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
 
-      def notify(_, _),
+      def notify(%Msg{start_line: %Req{}}, _),
         do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
 
-      def options(_, _),
+      def options(%Msg{start_line: %Req{}}, _),
         do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
 
-      def prack(_, _),
+      def prack(%Msg{start_line: %Req{}}, _),
         do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
 
-      def publish(_, _),
+      def publish(%Msg{start_line: %Req{}}, _),
         do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
 
-      def pull(_, _),
+      def pull(%Msg{start_line: %Req{}}, _),
         do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
 
-      def push(_, _),
+      def push(%Msg{start_line: %Req{}}, _),
         do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
 
-      def refer(_, _),
+      def refer(%Msg{start_line: %Req{}}, _),
         do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
 
-      def register(_, _),
+      def register(%Msg{start_line: %Req{}}, _),
         do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
 
-      def store(_, _),
+      def store(%Msg{start_line: %Req{}}, _),
         do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
 
-      def subscribe(_, _),
+      def subscribe(%Msg{start_line: %Req{}}, _),
         do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
 
-      def update(_, _),
+      def update(%Msg{start_line: %Req{}}, _),
         do: raise("attempted to call ack/2 in #{inspect(__MODULE__)}")
 
       @doc false
-      def receive_request(%MSG{start_line: %REQ{}} = msg, key) do
-        method = msg.start_line.method
+      def receive_request(%Msg{start_line: %Req{}} = incoming_request, key) do
+        method = incoming_request.start_line.method
 
         if Enum.member?(unquote(@methods), method) == true do
-          Kernel.apply(__MODULE__, method, [msg, key])
+          Kernel.apply(__MODULE__, method, [incoming_request, key])
         end
       end
 

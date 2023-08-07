@@ -9,14 +9,14 @@ defmodule Spigot do
   #  :address,
   #  :port,
   #  :family,
-  #  :router
+  #  :user_agent
 
   def start(options) do
-    router =
-      if is_nil(options[:router]) do
-        raise "a router module must be provided to build a spigot"
+    user_agent =
+      if is_nil(options[:user_agent]) do
+        raise "a user_agent module must be provided to build a spigot"
       else
-        options[:router]
+        options[:user_agent]
       end
 
     transport =
@@ -31,9 +31,11 @@ defmodule Spigot do
     end
 
     with {:ok, _pid} <- Sippet.start_link(name: options[:name]),
-         {:ok, _pid} <- transport.start_link(options),
-         :ok <- Sippet.register_core(options[:name], router) do
-          :ok
+         {:ok, _transport} <- transport.start_link(options),
+         {:module, _user_agent} <- Code.ensure_loaded(user_agent),
+         :ok <- Sippet.register_core(options[:name], user_agent) do
+          {:ok, user_agent, options: options}
+      :ok
     else
       error -> raise "#{inspect(error)}"
     end
