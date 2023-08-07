@@ -30,14 +30,16 @@ A SIP element should at least handle the following  methods as a client and serv
       in many cases acks won't be provided with a key, but their CSEQ will mach the one sent in the initial invite
   - REGISTER
     - register is used to tell a SIP network where a peer has connected from, and informs the upstream server how
-      to reach a given SIP element
+      to reach a given SIP element.
   - SUBSCRIBE
     - subscribe is used to notify a sip network/server of events that your agent would like to observe.
-      canonized event examples:
-      - MWI events
-      - BLF events
+      see RFC3265 for specific descriptions of events.
   - NOTIFY
+    - notify is used to handle events from an peer source,
+      some events are explicitly requested via a subscribe request before notify's are sent to the recipient of an event.
   - OPTIONS
+    - sip elements can use this request to discover the capabilities of their upstream server/proxy.
+      the server usually responds with an "Allow" header indicating what methods the client peer can use with the server.
 
 The core library elixir-sippet provides built-in support for the following as well:
   - INFO
