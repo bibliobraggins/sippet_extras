@@ -10,11 +10,10 @@ aimed features:
 
 ```elixir
 defmodule MySipElement do
+  use Spigot.Router, options
+  # MySipElement.start_link(name: :my_agent, port: 5060, address: "127.0.0.1")
 
-  # MySipElement.start_link(name: :stack_name, port: 5060, address: "192.168.0.2")
-
-  def start_link(options) do
-    use Spigot.Router, options
+  def start(options) do
 
     with {:ok, pid} <- Sippet.start_link(name: options[:name]), 
         {:ok, pid} <- Sippet.Transport.TCP.start_link(options) 
@@ -25,9 +24,11 @@ defmodule MySipElement do
             raise "problem "
         end
   end
+end
 
+defmodule MyUserAgent do 
+  use Spigot.Router, name: my_agent
   # define routes
-
   def register(msg, key) do
     send_resp(msg, 200)
   end
