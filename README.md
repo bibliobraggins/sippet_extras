@@ -55,7 +55,7 @@ aimed features:
 
 ```elixir
 defmodule MyUserAgent do 
-  use Spigot.Router, name: :my_agent
+  use Spigot.UserAgent, name: :my_agent
   # define routes
   def register(msg, key) do
     send_resp(msg, 200)
