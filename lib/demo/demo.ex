@@ -5,6 +5,7 @@ defmodule Spigot.Demo do
   def ack(msg, _key) do
     send_resp(msg, 200)
   end
+
   def register(msg, _key) do
     send_resp(msg, 200)
   end

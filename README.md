@@ -17,13 +17,14 @@ SIP as a protocol is similar to HTTP, with some differences:
 A SIP element should at least handle the following  methods as a client and server:
   - INVITE
     - invite's are used to set up one or more rtp session from one peer to another, as a call.
+      calls represent a process in memory that will make use of a media pipeline to handle data streams
   - CANCEL
     - cancel is used to deconstruct and disregard a call that was in progress, but the given
       client has not received a final ([2-6]00) response yet. the call should not complete 
       construction and be torn down.
   - BYE
     - same as a cancel, but this call was set up, indicating it should be persisted somewhere in history
-      and the call should now be torn down
+      and the call should now be torn down.
   - ACK
     - ack is used to indicate that a client has handled a final response from the server for a given transaction
       in many cases acks won't be provided with a key, but their CSEQ will mach the one sent in the initial invite
@@ -31,6 +32,10 @@ A SIP element should at least handle the following  methods as a client and serv
     - register is used to tell a SIP network where a peer has connected from, and informs the upstream server how
       to reach a given SIP element
   - SUBSCRIBE
+    - subscribe is used to notify a sip network/server of events that your agent would like to observe.
+      canonized event examples:
+      - MWI events
+      - BLF events
   - NOTIFY
   - OPTIONS
 
@@ -57,8 +62,19 @@ aimed features:
 defmodule MyUserAgent do 
   use Spigot.UserAgent, name: :my_agent
   # define routes
-  def register(msg, key) do
+  def ack(msg, _key) do
     send_resp(msg, 200)
+  end
+  
+  def register(msg, _key) do
+    send_resp(msg, 200)
+  end
+
+  def invite(msg, _key) do
+    status_code = ...do some thing...
+    ### begin call handling ###
+    
+    send_resp(msg, status_code)
   end
 end
 
