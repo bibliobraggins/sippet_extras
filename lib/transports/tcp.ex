@@ -156,14 +156,18 @@ defmodule Sippet.Transports.TCP do
     {:reply, :ok, state}
   end
 
+  @spec key(:inet.ip_address(), 0..65535) :: binary
   def key(host, port), do: :erlang.term_to_binary({host, port})
 
+  @spec connect(atom | :ets.tid(), any, any, any) :: boolean
   def connect(connections, host, port, handler),
     do: :ets.insert_new(connections, {key(host, port), handler})
 
+  @spec disconnect(atom | :ets.tid(), any, any) :: true
   def disconnect(connections, host, port),
     do: :ets.delete(connections, key(host, port))
 
+  @spec lookup_conn(atom | :ets.tid(), any, any) :: [tuple]
   def lookup_conn(connections, host, port),
     do: :ets.lookup(connections, key(host, port))
 
