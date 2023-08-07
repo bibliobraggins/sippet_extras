@@ -19,11 +19,6 @@ defmodule Spigot.UserAgent do
         challenge
       end
 
-      def authorize(%Msg{start_line: %Req{request_uri: %Sippet.URI{host: realm}}} = req, resp, options \\ []) do
-        {:ok, auth_req} = DigestAuth.make_request(req, resp, realm, options)
-        auth_req
-      end
-
       defp do_send(%Msg{start_line: %Resp{}} = resp), do: Sippet.send(unquote(options[:name]), resp)
 
       def send_resp(%Msg{start_line: %Resp{}} = resp), do: send_resp(resp)
