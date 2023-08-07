@@ -28,6 +28,10 @@ A SIP element should at least handle the following  methods as a client and serv
   - ACK
     - ack is used to indicate that a client has handled a final response from the server for a given transaction
       in many cases acks won't be provided with a key, but their CSEQ will mach the one sent in the initial invite
+  - REFER
+    - refer is used to indicate that either a new recipient must be added to an existing call (in the case of a conference)
+      or to transfer from one peer to another. Note that this operation can be handled before or upon final response from
+      the target peer.
   - REGISTER
     - register is used to tell a SIP network where a peer has connected from, and informs the upstream server how
       to reach a given SIP element.
@@ -48,7 +52,6 @@ The core library elixir-sippet provides built-in support for the following as we
   - PUBLISH
   - PULL
   - PUSH
-  - REFER
   - STORE
   - UPDATE
 
