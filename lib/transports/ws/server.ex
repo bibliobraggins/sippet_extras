@@ -8,7 +8,7 @@ defmodule Spigot.Transports.WS.Server do
   def handle_in({data, [opcode: :text]}, state) do
     Logger.debug(inspect(to_string(data)))
 
-    {:reply, :ok, {:text, "pong"}, state}
+    {:reply, :ok, {:text, data}, state}
   end
 
   def terminate(:timeout, state) do
