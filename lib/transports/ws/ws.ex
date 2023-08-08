@@ -72,4 +72,99 @@ defmodule Sippet.Transports.WS do
 
 
   """
+  use Supervisor
+  require Logger
+  def start_link(options) do
+    name =
+      case Keyword.fetch(options, :name) do
+        {:ok, name} when is_atom(name) ->
+          name
+
+        {:ok, other} ->
+          raise ArgumentError, "expected :name to be an atom, got: #{inspect(other)}"
+
+        :error ->
+          raise ArgumentError, "expected :name option to be present"
+      end
+
+    port =
+      case Keyword.fetch(options, :port) do
+        {:ok, port} when is_integer(port) and port > 0 and port < 65536 ->
+          port
+
+        {:ok, other} ->
+          raise ArgumentError,
+                "expected :port to be an integer between 1 and 65535, got: #{inspect(other)}"
+
+        :error ->
+          4000
+      end
+
+    {address, family} =
+      case Keyword.fetch(options, :address) do
+        {:ok, {address, family}} when family in [:inet, :inet6] and is_binary(address) ->
+          {address, family}
+
+        {:ok, address} when is_binary(address) ->
+          {address, :inet}
+
+        {:ok, other} ->
+          raise ArgumentError,
+                "expected :address to be an address or {address, family} tuple, got: " <>
+                  "#{inspect(other)}"
+
+        :error ->
+          {"0.0.0.0", :inet}
+      end
+
+    ip =
+      case resolve_name(address, family) do
+        {:ok, ip} ->
+          ip
+
+        {:error, reason} ->
+          raise ArgumentError,
+                ":address contains an invalid IP or DNS name, got: #{inspect(reason)}"
+      end
+
+    websocket_options =
+      case Keyword.fetch(options, :websocket_options) do
+        {:ok, opts} when is_list(opts) ->
+          opts
+        _ ->
+          []
+      end
+
+    {scheme, tls_options} =
+      with {:ok, tls_opts} when is_list(tls_opts) <- Keyword.fetch(options, :tls_options) do
+          {:https, tls_opts}
+      else
+        _ ->
+          {:http, []}
+      end
+
+    Supervisor.start_link(__MODULE__, {scheme, ip, port, tls_options, websocket_options}, name: Module.concat([__MODULE__, name, Bandit]))
+  end
+
+  @impl true
+  def init({scheme, ip, port, _tls_options, websocket_options}) do
+    children = [
+      {Bandit,
+        plug: Spigot.Transports.WS.Router,
+        scheme: scheme,
+        ip: ip,
+        port: port,
+        websocket_options: websocket_options
+      }
+    ]
+
+    Supervisor.init(children, [strategy: :one_for_one])
+  end
+
+  defp resolve_name(host, family) do
+    host
+    |> String.to_charlist()
+    |> :inet.getaddr(family)
+  end
+
 end

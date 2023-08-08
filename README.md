@@ -10,9 +10,13 @@ TODO:
 
 About SIP: 
 
-SIP as a protocol is similar to HTTP, with some differences: 
+SIP as a protocol is similar to HTTP, with some key differences: 
   - SIP elements may be a client or server depending on if they are the origin or receiver of a message.
   - Most any SIP element should be able to send and receive requests and responses, independent of origin.
+  - Common HTTP requests typically represent a simple request :: response pattern, 
+    but with SIP INVITE's in particular, messages may need to be relayed to through
+    many "hops" before a final response is received from an accepting party/peer.
+
 
 A SIP element should at least handle the following  methods as a client and server:
   - INVITE

@@ -4,6 +4,8 @@ defmodule Spigot.UserAgent do
   alias Msg.StatusLine, as: Resp
   alias Sippet.DigestAuth, as: DigestAuth
 
+
+
   # "ACK", "BYE", "CANCEL", "INFO", "INVITE", "MESSAGE", "NOTIFY", "OPTIONS","PRACK", "PUBLISH", "PULL", "PUSH", "REFER", "REGISTER", "STORE", "SUBSCRIBE","UPDATE"
   @methods Enum.into(Sippet.Message.known_methods(), [], fn method ->
              String.downcase(method) |> String.to_existing_atom()
@@ -14,7 +16,10 @@ defmodule Spigot.UserAgent do
       import Spigot.UserAgent
       use Sippet.Core
 
-      def challenge(%Msg{start_line: %Req{}} = req, status, realm) do
+      @type request :: %Msg{start_line: %Req{}}
+      @type response :: %Msg{start_line: %Resp{}}
+
+      def challenge(req, status, realm) do
         {:ok, challenge} = DigestAuth.make_response(req, status, realm)
         challenge
       end
