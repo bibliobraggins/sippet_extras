@@ -14,6 +14,8 @@ defmodule Spigot do
   #  :family,
   #  :user_agent
 
+  @transports [:udp, :tcp, :tls, :ws, :wss]
+
   def start(options) do
     user_agent =
       if is_nil(options[:user_agent]) do
@@ -23,7 +25,7 @@ defmodule Spigot do
       end
 
     transport =
-      if is_nil(options[:transport]) do
+      unless options[:transport] in @transports do
         raise "a transport module must be provided to build a spigot"
       else
         transport(options[:transport])
@@ -33,7 +35,7 @@ defmodule Spigot do
       raise "a name must be provided to build a spigot"
     end
 
-    with {:ok, _pid} <- Sippet.start_link(name: options[:name]),
+    with {:ok, _sippet} <- Sippet.start_link(name: options[:name]),
          {:ok, _transport} <- transport.start_link(options),
          {:module, _user_agent} <- Code.ensure_loaded(user_agent),
          :ok <- Sippet.register_core(options[:name], user_agent) do
