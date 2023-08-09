@@ -7,7 +7,8 @@ defmodule Spigot.Demo do
   end
 
   def register(msg, _key) do
+    Logger.debug("Received:\n#{to_string(msg)}")
+
     send_resp(msg, 200)
   end
-
 end

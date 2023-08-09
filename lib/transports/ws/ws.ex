@@ -1,4 +1,4 @@
-defmodule Sippet.Transports.WS do
+defmodule Spigot.Transports.WS do
   @moduledoc """
     Below is an example of a WebSocket handshake in which the client
     requests the WebSocket SIP subprotocol support from the server:
@@ -72,8 +72,11 @@ defmodule Sippet.Transports.WS do
 
 
   """
-  use Supervisor
+  import Plug.Conn
+  @behaviour Plug
+
   require Logger
+
   def start_link(options) do
     name =
       case Keyword.fetch(options, :name) do
@@ -131,26 +134,24 @@ defmodule Sippet.Transports.WS do
       case Keyword.fetch(options, :websocket_options) do
         {:ok, opts} when is_list(opts) ->
           opts
+
         _ ->
           []
       end
 
-    {scheme, tls_options} =
+    {scheme, _tls_options} =
       with {:ok, tls_opts} when is_list(tls_opts) <- Keyword.fetch(options, :tls_options) do
-          {:https, tls_opts}
+        ## get cipher, key, cert...
+        {:https, tls_opts}
       else
         _ ->
           {:http, []}
       end
 
-    Supervisor.start_link(__MODULE__, {scheme, ip, port, tls_options, websocket_options}, name: Module.concat([__MODULE__, name, Bandit]))
-  end
-
-  @impl true
-  def init({scheme, ip, port, _tls_options, websocket_options}) do
     children = [
-      {Bandit,
-        plug: Spigot.Transports.WS.Router,
+      {
+        Bandit,
+        plug: __MODULE__,
         scheme: scheme,
         ip: ip,
         port: port,
@@ -158,13 +159,36 @@ defmodule Sippet.Transports.WS do
       }
     ]
 
-    Supervisor.init(children, [strategy: :one_for_one])
+    with {:ok, _pid} <- Supervisor.start_link(children, name: Module.concat(name, BanditHandler), strategy: :one_for_all) do
+      Sippet.register_transport(options[:name], :ws, true)
+    else
+      err ->
+        raise "#{inspect(err)}"
+    end
   end
+
+  @impl true
+  def init(options) do
+    {:ok, options}
+  end
+
+  @impl true
+  def call(conn = %{request_path: "/"}, _options) do
+    update_resp_header(conn, "sec-websocket-protocol", "", fn _ -> "sip" end)
+    |> WebSockAdapter.upgrade(
+      Spigot.Transports.WS.Server,
+      [peer: Plug.Conn.get_peer_data(conn)],
+      timeout: 60_000
+    )
+  end
+
+  @not_found Enum.random(["bubkis", "zilch", "nada", "got nothin\'", "*crickets*", "Not Found"])
+  @impl true
+  def call(conn, _opts), do: send_resp(conn, 404, @not_found)
 
   defp resolve_name(host, family) do
     host
     |> String.to_charlist()
     |> :inet.getaddr(family)
   end
-
 end

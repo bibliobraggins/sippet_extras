@@ -75,12 +75,13 @@ defmodule Spigot.Transports.TCP do
                 ":address contains an invalid IP or DNS name, got: #{inspect(reason)}"
       end
 
-    connections = :ets.new(:"#{name}_connections", [
-             :named_table,
-             :set,
-             :public,
-             {:write_concurrency, true}
-           ])
+    connections =
+      :ets.new(:"#{name}_connections", [
+        #:named_table,
+        :set,
+        :public,
+        {:write_concurrency, true}
+      ])
 
     GenServer.start_link(__MODULE__,
       name: name,

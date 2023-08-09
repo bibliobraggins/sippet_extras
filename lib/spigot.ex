@@ -34,7 +34,7 @@ defmodule Spigot do
          {:ok, _transport} <- transport.start_link(options),
          {:module, _user_agent} <- Code.ensure_loaded(user_agent),
          :ok <- Sippet.register_core(options[:name], user_agent) do
-          {:ok, user_agent, options: options}
+      {:ok, user_agent, options: options}
       :ok
     else
       error -> raise "#{inspect(error)}"

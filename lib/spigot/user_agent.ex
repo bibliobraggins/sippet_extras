@@ -4,8 +4,6 @@ defmodule Spigot.UserAgent do
   alias Msg.StatusLine, as: Resp
   alias Sippet.DigestAuth, as: DigestAuth
 
-
-
   # "ACK", "BYE", "CANCEL", "INFO", "INVITE", "MESSAGE", "NOTIFY", "OPTIONS","PRACK", "PUBLISH", "PULL", "PUSH", "REFER", "REGISTER", "STORE", "SUBSCRIBE","UPDATE"
   @methods Enum.into(Sippet.Message.known_methods(), [], fn method ->
              String.downcase(method) |> String.to_existing_atom()
@@ -24,11 +22,13 @@ defmodule Spigot.UserAgent do
         challenge
       end
 
-      defp do_send(%Msg{start_line: %Resp{}} = resp), do: Sippet.send(unquote(options[:name]), resp)
+      defp do_send(%Msg{start_line: %Resp{}} = resp),
+        do: Sippet.send(unquote(options[:name]), resp)
 
       def send_resp(%Msg{start_line: %Resp{}} = resp), do: send_resp(resp)
 
-      def send_resp(%Msg{start_line: %Req{}} = req, status), do: Msg.to_response(req, status) |> send_resp()
+      def send_resp(%Msg{start_line: %Req{}} = req, status),
+        do: Msg.to_response(req, status) |> send_resp()
 
       def send_resp(%Msg{start_line: %Req{}} = req, status, reason) when is_binary(reason),
         do: Msg.to_response(req, status, reason) |> send_resp()
