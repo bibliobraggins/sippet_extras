@@ -1,4 +1,4 @@
-defmodule Sippet.Transports.TCP do
+defmodule Spigot.Transports.TCP do
   @moduledoc """
   Implements a TCP transport via ThousandIsland
   """
@@ -10,7 +10,7 @@ defmodule Sippet.Transports.TCP do
   alias Sippet.Message, as: Message
   alias Message.RequestLine, as: Request
   alias Message.StatusLine, as: Response
-  alias Sippet.Transports.TCP.Server, as: Server
+  alias Spigot.Transports.TCP.Server, as: Server
 
   @doc false
   def child_spec(options) do

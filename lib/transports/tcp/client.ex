@@ -1,9 +1,9 @@
-defmodule Sippet.Transports.TCP.Client do
+defmodule Spigot.Transports.TCP.Client do
   use GenServer
   require Logger
 
   alias Sippet.Message, as: Msg
-  import Sippet.Transports.TCP
+  import Spigot.Transports.TCP
 
   @type option :: :registry | :timeout | :peer | :socket | :start_message | :retries
   @type options :: [option]
@@ -179,7 +179,7 @@ defmodule Sippet.Transports.TCP.Client do
   def handle_info(_, state), do: {:noreply, state}
 end
 
-defmodule Sippet.Transports.TCP.ClientSupervisor do
+defmodule Spigot.Transports.TCP.ClientSupervisor do
   use DynamicSupervisor
 
   @spec start_link(nil | maybe_improper_list | map) :: :ignore | {:error, any} | {:ok, pid}
@@ -192,7 +192,7 @@ defmodule Sippet.Transports.TCP.ClientSupervisor do
   @spec start_client(any) :: :ignore | {:error, any} | {:ok, pid} | {:ok, pid, any}
   def start_client(client_options) do
     spec = {
-      Sippet.Transports.TCP.Client,
+      Spigot.Transports.TCP.Client,
       client_options
     }
 

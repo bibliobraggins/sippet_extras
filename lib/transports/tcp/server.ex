@@ -1,10 +1,10 @@
-defmodule Sippet.Transports.TCP.Server do
+defmodule Spigot.Transports.TCP.Server do
   use ThousandIsland.Handler
 
   alias ThousandIsland
   alias ThousandIsland.Socket
 
-  import Sippet.Transports.TCP
+  import Spigot.Transports.TCP
 
   require Logger
 

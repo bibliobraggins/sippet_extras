@@ -1,6 +1,6 @@
 defmodule Spigot do
   require Logger
-  alias Sippet.Transports.TCP, as: TCP
+  alias Spigot.Transports.TCP, as: TCP
   alias Sippet.Transports.UDP, as: UDP
 
   # options = [
