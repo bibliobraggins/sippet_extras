@@ -77,7 +77,7 @@ defmodule Spigot.Transports.TCP do
 
     connections =
       :ets.new(:"#{name}_connections", [
-        #:named_table,
+        # :named_table,
         :set,
         :public,
         {:write_concurrency, true}

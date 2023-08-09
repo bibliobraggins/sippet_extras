@@ -1,6 +1,9 @@
 defmodule Spigot do
   require Logger
+
   alias Spigot.Transports.TCP, as: TCP
+  alias Spigot.Transports.WS, as: WS
+
   alias Sippet.Transports.UDP, as: UDP
 
   # options = [
@@ -48,6 +51,9 @@ defmodule Spigot do
 
       :udp ->
         UDP
+
+      :ws ->
+        WS
 
       unsupported ->
         raise "transport option rejected: #{inspect(unsupported)}"

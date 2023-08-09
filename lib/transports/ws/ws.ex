@@ -151,7 +151,7 @@ defmodule Spigot.Transports.WS do
     children = [
       {
         Bandit,
-        plug: __MODULE__,
+        plug: {__MODULE__, name: name},
         scheme: scheme,
         ip: ip,
         port: port,
@@ -159,21 +159,17 @@ defmodule Spigot.Transports.WS do
       }
     ]
 
-    with {:ok, _pid} <- Supervisor.start_link(children, name: Module.concat(name, BanditHandler), strategy: :one_for_all) do
-      Sippet.register_transport(options[:name], :ws, true)
-    else
-      err ->
-        raise "#{inspect(err)}"
-    end
+    Supervisor.start_link(children, strategy: :one_for_all)
   end
 
   @impl true
   def init(options) do
+    Sippet.register_transport(options[:name], :ws, true)
     {:ok, options}
   end
 
   @impl true
-  def call(conn = %{request_path: "/"}, _options) do
+  def call(conn = %{request_path: "/", method: "GET"}, _options) do
     update_resp_header(conn, "sec-websocket-protocol", "", fn _ -> "sip" end)
     |> WebSockAdapter.upgrade(
       Spigot.Transports.WS.Server,
