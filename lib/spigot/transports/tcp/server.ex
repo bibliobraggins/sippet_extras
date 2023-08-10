@@ -14,14 +14,14 @@ defmodule Spigot.Transports.TCP.Server do
   def handle_connection(socket, state) do
     peer = Socket.peer_info(socket)
 
-    connect(state[:connections], peer.address, peer.port, self())
+    connect(state[:connections], peer, self())
 
     {:continue, state}
   end
 
   @impl ThousandIsland.Handler
   def handle_data(<<255, 244, 255, 253, 6>>, _socket, state) do
-    Logger.warning("got ^C ::  #{inspect(<<255, 244, 255, 253, 6>>)} :: CLOSING CONNECTION")
+    Logger.warning("got ^C exit code ::  #{inspect(<<255, 244, 255, 253, 6>>)} :: CLOSING CONNECTION")
     {:close, state}
   end
 

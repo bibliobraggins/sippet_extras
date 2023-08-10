@@ -77,7 +77,7 @@ defmodule Spigot.Transports.TCP do
 
     connections =
       :ets.new(:"#{name}_connections", [
-        # :named_table,
+        :named_table,
         :set,
         :public,
         {:write_concurrency, true}
@@ -158,15 +158,21 @@ defmodule Spigot.Transports.TCP do
   end
 
   @spec key(:inet.ip_address(), 0..65535) :: binary
-  def key(host, port), do: :erlang.term_to_binary({host, port})
+  def key(host, port) do
+    key = :erlang.term_to_binary({host, port})
+    Logger.info("INSERTING KEY:#{inspect(key)}")
+    key
+  end
 
-  @spec connect(atom | :ets.tid(), any, any, any) :: boolean
-  def connect(connections, host, port, handler),
-    do: :ets.insert_new(connections, {key(host, port), handler})
+  @spec connect(atom | :ets.tid(), binary | map, pid | atom) :: boolean
+  def connect(connections, peer, handler) when is_binary(peer), do: :ets.insert_new(connections, {peer, handler})
+  def connect(connections, peer = %{address: _, port: _, ssl_cert: _}, handler), do: connect(connections, key(peer.address, peer.port), handler)
 
   @spec disconnect(atom | :ets.tid(), any, any) :: true
   def disconnect(connections, host, port),
-    do: :ets.delete(connections, key(host, port))
+    do: disconnect(connections, key(host, port))
+
+  def disconnect(connections, key), do: :ets.delete(connections, key)
 
   @spec lookup_conn(atom | :ets.tid(), any, any) :: [tuple]
   def lookup_conn(connections, host, port),
