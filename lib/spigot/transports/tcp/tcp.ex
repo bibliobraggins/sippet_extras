@@ -163,18 +163,21 @@ defmodule Spigot.Transports.TCP do
   @spec connect(atom | :ets.tid(), binary | map, pid | atom) :: boolean
   def connect(connections, peer = %{address: _, port: _, ssl_cert: _}, handler),
     do: connect(connections, key(peer.address, peer.port), handler)
+
   def connect(connections, key, handler) when is_binary(key),
     do: :ets.insert(connections, {key, handler})
 
   @spec disconnect(atom | :ets.tid(), map | binary) :: true
   def disconnect(connections, peer = %{address: _, port: _, ssl_cert: _}),
     do: disconnect(connections, key(peer.address, peer.port))
+
   def disconnect(connections, key) when is_binary(key),
     do: :ets.delete(connections, key)
 
   @spec lookup_conn(atom | :ets.tid(), binary()) :: [tuple]
   def lookup_conn(connections, key),
     do: :ets.lookup(connections, key)
+
   def lookup_conn(connections, host, port),
     do: :ets.lookup(connections, key(host, port))
 

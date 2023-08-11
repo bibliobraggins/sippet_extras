@@ -18,7 +18,7 @@ defmodule Spigot.MixProject do
         :logger,
         :observer,
         :wx,
-        :runtime_tools,
+        :runtime_tools
       ]
     ]
   end
