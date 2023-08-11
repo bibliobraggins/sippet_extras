@@ -16,20 +16,13 @@ defmodule Spigot.Transports.TCP.Server do
 
     connect(state[:connections], peer, self())
 
-    {:continue, state}
+    {:continue, Keyword.put(state, :conn, key(peer.address, peer.port))}
   end
 
   @impl ThousandIsland.Handler
-  def handle_data(<<255, 244, 255, 253, 6>>, _socket, state) do
-    Logger.warning("got ^C exit code ::  #{inspect(<<255, 244, 255, 253, 6>>)} :: CLOSING CONNECTION")
-    {:close, state}
-  end
-
+  def handle_data(<<255, 244, 255, 253, 6>>, _socket, state), do: {:close, state}
   @impl ThousandIsland.Handler
-  def handle_data("\r\n\r\n", socket, state) do
-    Logger.debug("got keepalive: #{inspect(Socket.peer_info(socket))}")
-    {:continue, state}
-  end
+  def handle_data("\r\n\r\n", _socket, state), do: {:continue, state}
 
   @impl ThousandIsland.Handler
   def handle_data(data, socket, state) do
@@ -51,7 +44,7 @@ defmodule Spigot.Transports.TCP.Server do
       ThousandIsland.Socket.send(socket, io_msg)
     else
       error ->
-        Logger.error("Could not change message to io list. reason: #{inspect(error)}")
+        Logger.error("Could not change message to io list. reason: #{inspect(error)}\n#{inspect(message)}")
     end
 
     {:noreply, {socket, state}}
@@ -73,14 +66,19 @@ defmodule Spigot.Transports.TCP.Server do
   end
 
   @impl ThousandIsland.Handler
-  def handle_shutdown(socket, state) do
+  def handle_close(_socket, state) do
+    disconnect(state[:connections], state[:conn])
+
+    :ok
+  end
+
+  @impl ThousandIsland.Handler
+  def handle_shutdown(socket, _state) do
     %{
       address: host,
       port: port,
       ssl_cert: _ssl_cert
     } = Socket.peer_info(socket)
-
-    disconnect(state[:connections], host, port)
 
     Logger.debug(
       "shutting down handler #{inspect(self())} : #{inspect(stringify_hostport(host, port))}"

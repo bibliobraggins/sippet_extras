@@ -14,6 +14,9 @@ defmodule Spigot do
   #  :family,
   #  :user_agent
 
+  @moduledoc """
+  """
+
   @transports [:udp, :tcp, :tls, :ws, :wss]
 
   def start(options) do
@@ -61,12 +64,4 @@ defmodule Spigot do
         raise "transport option rejected: #{inspect(unsupported)}"
     end
   end
-
-  @moduledoc """
-  Documentation for `Spigot`.
-    def register(req, _key) do
-    Logger.debug(to_string(req))
-    send_resp(req, 200)
-  end
-  """
 end
