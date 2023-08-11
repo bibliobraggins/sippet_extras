@@ -75,9 +75,8 @@ defmodule Spigot.UserAgent do
       def receive_request(%Msg{start_line: %Req{}} = incoming_request, key) do
         method = incoming_request.start_line.method
 
-        if Enum.member?(Utils.methods(), method) == true do
-          apply(__MODULE__, method, [incoming_request, key])
-        end
+        if Enum.member?(Utils.methods(), method),
+          do: apply(__MODULE__, method, [incoming_request, key])
       end
 
       def receive_response(response, client_key),

@@ -9,7 +9,11 @@ defmodule Spigot.UserAgent.Utils do
 
   # "ACK", "BYE", "CANCEL", "INFO", "INVITE", "MESSAGE", "NOTIFY", "OPTIONS","PRACK", "PUBLISH", "PULL", "PUSH", "REFER", "REGISTER", "STORE", "SUBSCRIBE","UPDATE"
 
-  def methods, do: Enum.into(Msg.known_methods(), [], fn method -> String.downcase(method) |> String.to_existing_atom() end)
+  def methods,
+    do:
+      Enum.into(Msg.known_methods(), [], fn method ->
+        String.downcase(method) |> String.to_existing_atom()
+      end)
 
   def update_via(message) do
     message
@@ -35,6 +39,7 @@ defmodule Spigot.UserAgent.Utils do
         end,
         []
       )
+
     auth_req
   end
 

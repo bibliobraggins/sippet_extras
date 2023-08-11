@@ -3,26 +3,22 @@ defmodule Spigot.Transports.TCP.Server do
 
   alias ThousandIsland
   alias ThousandIsland.Socket
-
-  import Spigot.Transports.TCP
+  alias Sippet.Message, as: Message
+  alias Spigot.Transports.TCP
 
   require Logger
-
-  alias Sippet.Message, as: Message
 
   @impl ThousandIsland.Handler
   def handle_connection(socket, state) do
     peer = Socket.peer_info(socket)
-
-    connect(state[:connections], peer, self())
-
-    {:continue, Keyword.put(state, :conn, key(peer.address, peer.port))}
+    TCP.connect(state[:connections], peer, self())
+    {:continue, Keyword.put(state, :conn, TCP.key(peer.address, peer.port))}
   end
 
   @impl ThousandIsland.Handler
-  def handle_data(<<255, 244, 255, 253, 6>>, _socket, state), do: {:close, state}
-  @impl ThousandIsland.Handler
   def handle_data("\r\n\r\n", _socket, state), do: {:continue, state}
+  @impl ThousandIsland.Handler
+  def handle_data(<<255, 244, 255, 253, 6>>, _socket, state), do: {:close, state}
 
   @impl ThousandIsland.Handler
   def handle_data(data, socket, state) do
@@ -44,7 +40,9 @@ defmodule Spigot.Transports.TCP.Server do
       ThousandIsland.Socket.send(socket, io_msg)
     else
       error ->
-        Logger.error("Could not change message to io list. reason: #{inspect(error)}\n#{inspect(message)}")
+        Logger.error(
+          "Could not change message to io list. reason: #{inspect(error)}\n#{inspect(message)}"
+        )
     end
 
     {:noreply, {socket, state}}
@@ -53,21 +51,15 @@ defmodule Spigot.Transports.TCP.Server do
   @impl ThousandIsland.Handler
   def handle_error(reason, _socket, state) do
     Logger.error("#{inspect(reason)}")
-    # peer = Socket.peer_info(socket)
-
     {:continue, state}
   end
 
   @impl ThousandIsland.Handler
-  def handle_timeout(_socket, state) do
-    # peer = Socket.peer_info(socket)
-
-    {:close, state}
-  end
+  def handle_timeout(_socket, state), do: {:close, state}
 
   @impl ThousandIsland.Handler
   def handle_close(_socket, state) do
-    disconnect(state[:connections], state[:conn])
+    TCP.disconnect(state[:connections], state[:conn])
 
     :ok
   end

@@ -158,23 +158,23 @@ defmodule Spigot.Transports.TCP do
   end
 
   @spec key(:inet.ip_address(), 0..65535) :: binary
-  def key(host, port) do
-    key = :erlang.term_to_binary({host, port})
-    Logger.info("INSERTING KEY:#{inspect(key)}")
-    key
-  end
+  def key(ip, port), do: :erlang.term_to_binary({ip, port})
 
   @spec connect(atom | :ets.tid(), binary | map, pid | atom) :: boolean
-  def connect(connections, peer, handler) when is_binary(peer), do: :ets.insert_new(connections, {peer, handler})
-  def connect(connections, peer = %{address: _, port: _, ssl_cert: _}, handler), do: connect(connections, key(peer.address, peer.port), handler)
+  def connect(connections, peer = %{address: _, port: _, ssl_cert: _}, handler),
+    do: connect(connections, key(peer.address, peer.port), handler)
+  def connect(connections, key, handler) when is_binary(key),
+    do: :ets.insert(connections, {key, handler})
 
-  @spec disconnect(atom | :ets.tid(), any, any) :: true
-  def disconnect(connections, host, port),
-    do: disconnect(connections, key(host, port))
+  @spec disconnect(atom | :ets.tid(), map | binary) :: true
+  def disconnect(connections, peer = %{address: _, port: _, ssl_cert: _}),
+    do: disconnect(connections, key(peer.address, peer.port))
+  def disconnect(connections, key) when is_binary(key),
+    do: :ets.delete(connections, key)
 
-  def disconnect(connections, key), do: :ets.delete(connections, key)
-
-  @spec lookup_conn(atom | :ets.tid(), any, any) :: [tuple]
+  @spec lookup_conn(atom | :ets.tid(), binary()) :: [tuple]
+  def lookup_conn(connections, key),
+    do: :ets.lookup(connections, key)
   def lookup_conn(connections, host, port),
     do: :ets.lookup(connections, key(host, port))
 
