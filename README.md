@@ -69,7 +69,7 @@ aimed features:
 
 ```elixir
 defmodule MyUserAgent do 
-  use Spigot.UserAgent, name: :my_agent
+  use Spigot.UserAgent, name: :my_service_1
   # define routes
   def ack(msg, _key) do
     send_resp(msg, 200)
@@ -80,14 +80,14 @@ defmodule MyUserAgent do
   end
 
   def invite(msg, _key) do
-    status_code = ...do some thing...
+    status_code = ...do some thing here...
     ### begin call handling ###
     
     send_resp(msg, status_code)
   end
 end
 
-Spigot.start(name: :my_agent, port: 5060, transport: :tcp, user_agent: MyUserAgent)
+Spigot.start(name: :my_service_1, port: 5060, transport: :tcp, user_agent: MyUserAgent)
 ```
 
 ## Installation

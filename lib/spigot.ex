@@ -43,7 +43,6 @@ defmodule Spigot do
          {:module, _user_agent} <- Code.ensure_loaded(user_agent),
          :ok <- Sippet.register_core(options[:name], user_agent) do
       {:ok, user_agent, options: options}
-      :ok
     else
       error -> raise "#{inspect(error)}"
     end
