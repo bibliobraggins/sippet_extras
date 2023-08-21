@@ -17,9 +17,6 @@ defmodule Spigot.UserAgent.Utils do
 
   def update_via(message) do
     message
-    |> Msg.update_header(:cseq, fn {seq, method} ->
-      {seq + 1, method}
-    end)
     |> Msg.update_header_front(:via, fn {ver, proto, hostport, params} ->
       {ver, proto, hostport, %{params | "branch" => Msg.create_branch()}}
     end)

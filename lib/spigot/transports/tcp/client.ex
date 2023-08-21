@@ -5,11 +5,11 @@ defmodule Spigot.Transports.TCP.Client do
   alias Sippet.Message, as: Msg
   import Spigot.Transports.TCP
 
-  @type option :: :registry | :timeout | :peer | :socket | :start_message | :retries
+  @type option :: :connections | :timeout | :peer | :socket | :start_message | :retries
   @type options :: [option]
 
   @enforce_keys [
-    :registry,
+    :connections,
     :timeout,
     :peer,
     :socket,
@@ -22,19 +22,19 @@ defmodule Spigot.Transports.TCP.Client do
 
   @spec start_link(keyword) :: :ignore | {:error, any} | {:ok, pid}
   def start_link(options) do
-    registry =
-      case Keyword.fetch(options, :registry) do
-        {:ok, registry} when is_atom(registry) ->
-          registry
+    connections =
+      case Keyword.fetch(options, :connections) do
+        {:ok, connections} when is_atom(connections) ->
+          connections
 
         _ ->
-          raise "no registry pid provided to #{inspect(__MODULE__)}, #{inspect(self())}"
+          raise "no connections pid provided to #{inspect(__MODULE__)}, #{inspect(self())}"
       end
 
     peer =
       case Keyword.fetch(options, :peer) do
-        {:ok, {addr, port}} ->
-          {addr, port}
+        {:ok, %{address: _, port: _, ssl_cert: _} = peer} ->
+          peer
 
         _ ->
           raise "no {peer_addr, peer_port} data provided to #{inspect(__MODULE__)}, #{inspect(self())}"
@@ -88,7 +88,7 @@ defmodule Spigot.Transports.TCP.Client do
 
     options = [
       ip: ip,
-      registry: registry,
+      connections: connections,
       family: family,
       peer: peer,
       timeout: timeout,
@@ -176,31 +176,8 @@ defmodule Spigot.Transports.TCP.Client do
   end
 
   @impl true
-  def handle_info(_, state), do: {:noreply, state}
-end
-
-defmodule Spigot.Transports.TCP.ClientSupervisor do
-  use DynamicSupervisor
-
-  @spec start_link(nil | maybe_improper_list | map) :: :ignore | {:error, any} | {:ok, pid}
-  def start_link(name) do
-    name = :"#{name}_client_sup"
-
-    DynamicSupervisor.start_link(__MODULE__, [], name: name)
-  end
-
-  @spec start_client(any) :: :ignore | {:error, any} | {:ok, pid} | {:ok, pid, any}
-  def start_client(client_options) do
-    spec = {
-      Spigot.Transports.TCP.Client,
-      client_options
-    }
-
-    DynamicSupervisor.start_child(__MODULE__, spec)
-  end
-
-  @impl true
-  def init(_options) do
-    DynamicSupervisor.init(strategy: :one_for_one)
+  def handle_info(othr, state) do
+    Logger.info("unexpected message: #{inspect(othr)}")
+    {:noreply, state}
   end
 end

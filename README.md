@@ -4,9 +4,11 @@ Spigot aims to be a Plug style library for SIP applications.
 
 TODO: 
   - debug transports
-  - more helper methods
+    - client transaction support
+    - handle tls options in tcp handler
+  - Task based client Requests
+  - B2BUA mode
   - media server
-
 
 About SIP: 
 
