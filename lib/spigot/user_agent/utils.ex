@@ -23,7 +23,11 @@ defmodule Spigot.UserAgent.Utils do
     |> Msg.update_header(:from, fn {name, uri, params} ->
       {name, uri, %{params | "tag" => Msg.create_tag()}}
     end)
+    |> update_cseq()
   end
+
+  def update_cseq(message),
+    do: Msg.update_header(message, :cseq, fn {cseq, method} -> {cseq + 1, method} end)
 
   @spec authorize(request(), response(), binary(), binary()) :: request()
   def authorize(req, challenge, sip_user, sip_password) do
@@ -39,7 +43,7 @@ defmodule Spigot.UserAgent.Utils do
 
     auth_req
   end
-
+  @spec challenge(request, 401|407, binary()) :: response
   def challenge(req, status, realm) do
     {:ok, challenge} = DigestAuth.make_response(req, status, realm)
     challenge

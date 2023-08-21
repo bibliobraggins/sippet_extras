@@ -5,8 +5,10 @@ defmodule Spigot.UserAgent do
 
   def server() do
     quote location: :keep do
+      server = @user_agent[:server]
+
       defp do_send(%Msg{start_line: %Resp{}} = resp),
-        do: Sippet.send(@user_agent[:config][:name], resp)
+        do: Sippet.send([:config][:name], resp)
 
       def send_resp(%Msg{start_line: %Resp{}} = resp), do: do_send(resp)
 
@@ -67,6 +69,16 @@ defmodule Spigot.UserAgent do
                      store: 2,
                      subscribe: 2,
                      update: 2
+    end
+  end
+
+  def client() do
+    quote do
+      clients = @user_agent[:client]
+
+      # [requests: [
+      #
+      # ]]
     end
   end
 
