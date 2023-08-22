@@ -88,8 +88,7 @@ defmodule Spigot.Transports.TCP do
       ip: ip,
       port: port,
       family: family,
-      connections: connections,
-      clients: :"#{options[:name]}_client_sup"
+      connections: connections
     )
   end
 

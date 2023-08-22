@@ -1,8 +1,11 @@
 defmodule Spigot.Transports.WS.Server do
   require Logger
 
+  alias Spigot.Transports.WS, as: WS
+
   def init(options) do
-    Logger.debug(inspect(options))
+    Logger.debug(options)
+    WS.connect(:demo_connections, options[:peer], self())
     {:ok, options}
   end
 

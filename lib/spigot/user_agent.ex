@@ -3,49 +3,55 @@ defmodule Spigot.UserAgent do
   alias Msg.RequestLine, as: Req
   alias Msg.StatusLine, as: Resp
 
-  def server() do
+  @type request :: %Msg{start_line: %Req{}}
+  @type response :: %Msg{start_line: %Resp{}}
+
+  defmacro __using__(options) do
+    ## build children here
+
     quote location: :keep do
-      server = @user_agent[:server]
+      if is_list(clients = unquote(options[:clients])) && length(clients) > 0 do
+        def start_link() do
+          Enum.each(unquote(options[:clients]), fn x -> IO.inspect(x) end)
+        end
+      end
 
-      defp do_send(%Msg{start_line: %Resp{}} = resp),
-        do: Sippet.send([:config][:name], resp)
+      defp do_send_resp(%Msg{start_line: %Resp{}} = resp),
+        do: Sippet.send(unquote(options[:name]), resp)
 
-      def send_resp(%Msg{start_line: %Resp{}} = resp), do: do_send(resp)
+      def send_resp(%Msg{start_line: %Resp{}} = resp), do: do_send_resp(resp)
 
       def send_resp(%Msg{start_line: %Req{}} = req, status),
-        do: Msg.to_response(req, status) |> do_send()
+        do: Msg.to_response(req, status) |> do_send_resp()
 
       def send_resp(%Msg{start_line: %Req{}} = req, status, reason) when is_binary(reason),
-        do: Msg.to_response(req, status, reason) |> do_send()
+        do: Msg.to_response(req, status, reason) |> do_send_resp()
 
-      defp handle_undefined(%Msg{start_line: %Req{method: method}} = req), do: send_resp(req, 501)
+      def invite(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
+      def ack(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
+      def bye(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
+      def cancel(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
+      def refer(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
+      def register(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
+      def subscribe(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
+      def notify(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
+      def options(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
+      def info(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
+      def message(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
+      def prack(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
+      def publish(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
+      def pull(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
+      def push(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
+      def store(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
+      def update(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
 
-      def invite(%Msg{start_line: %Req{}} = req, _), do: &handle_undefined/1
-      def ack(%Msg{start_line: %Req{}} = req, _), do: &handle_undefined/1
-      def bye(%Msg{start_line: %Req{}} = req, _), do: &handle_undefined/1
-      def cancel(%Msg{start_line: %Req{}} = req, _), do: &handle_undefined/1
-      def refer(%Msg{start_line: %Req{}} = req, _), do: &handle_undefined/1
-      def register(%Msg{start_line: %Req{}} = req, _), do: &handle_undefined/1
-      def subscribe(%Msg{start_line: %Req{}} = req, _), do: &handle_undefined/1
-      def notify(%Msg{start_line: %Req{}} = req, _), do: &handle_undefined/1
-      def options(%Msg{start_line: %Req{}} = req, _), do: &handle_undefined/1
-      def info(%Msg{start_line: %Req{}} = req, _), do: &handle_undefined/1
-      def message(%Msg{start_line: %Req{}} = req, _), do: &handle_undefined/1
-      def prack(%Msg{start_line: %Req{}} = req, _), do: &handle_undefined/1
-      def publish(%Msg{start_line: %Req{}} = req, _), do: &handle_undefined/1
-      def pull(%Msg{start_line: %Req{}} = req, _), do: &handle_undefined/1
-      def push(%Msg{start_line: %Req{}} = req, _), do: &handle_undefined/1
-      def store(%Msg{start_line: %Req{}} = req, _), do: &handle_undefined/1
-      def update(%Msg{start_line: %Req{}} = req, _), do: &handle_undefined/1
-
-      @doc false
+      @doc "this is a minimal helper to allow declarative request handling"
       def receive_request(%Msg{start_line: %Req{method: method}} = incoming_request, key),
         do: apply(__MODULE__, method, [incoming_request, key])
 
       def receive_response(response, client_key),
         do: raise("attempted to cal Router but no receive_response clause matched")
 
-      @doc false
       def receive_error(reason, client_or_server_key),
         do: raise("TODO: attempted to call Router but no receive_error/2 clause matched")
 
@@ -70,20 +76,6 @@ defmodule Spigot.UserAgent do
                      subscribe: 2,
                      update: 2
     end
-  end
-
-  def client() do
-    quote do
-      clients = @user_agent[:client]
-
-      # [requests: [
-      #
-      # ]]
-    end
-  end
-
-  defmacro __using__(_config) do
-    server()
   end
 
   ## TODO: write out DSL for validation and SIP header/body manipulation

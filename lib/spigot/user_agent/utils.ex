@@ -43,7 +43,8 @@ defmodule Spigot.UserAgent.Utils do
 
     auth_req
   end
-  @spec challenge(request, 401|407, binary()) :: response
+
+  @spec challenge(request, 401 | 407, binary()) :: response
   def challenge(req, status, realm) do
     {:ok, challenge} = DigestAuth.make_response(req, status, realm)
     challenge

@@ -1,8 +1,7 @@
-defmodule Spigot.Demo do
-  @user_agent server: [name: :demo],
-              client: []
-
-  use Spigot.UserAgent
+defmodule Demo do
+  use Spigot.UserAgent,
+    name: :demo,
+    clients: []
 
   require Logger
 
@@ -22,6 +21,6 @@ defmodule Spigot.Demo do
   end
 
   defp log(msg) do
-    Logger.debug("#{__MODULE__}|#{inspect(@user_agent[:name])} Received:\n#{to_string(msg)}")
+    Logger.debug("#{__MODULE__}\nReceived:\n#{to_string(msg)}")
   end
 end
