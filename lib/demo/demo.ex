@@ -1,7 +1,9 @@
 defmodule Demo do
   use Spigot.UserAgent,
     name: :demo,
-    clients: []
+    clients: [
+      {:register, "sip:100@127.0.0.1", username: "demo_spaghet", password: "92cb159da"},
+    ]
 
   require Logger
 

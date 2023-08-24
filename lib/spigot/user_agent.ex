@@ -3,29 +3,49 @@ defmodule Spigot.UserAgent do
   alias Msg.RequestLine, as: Req
   alias Msg.StatusLine, as: Resp
 
+  require Logger
+
   @type request :: %Msg{start_line: %Req{}}
   @type response :: %Msg{start_line: %Resp{}}
 
   defmacro __using__(options) do
     ## build children here
 
-    quote location: :keep do
-      if is_list(clients = unquote(options[:clients])) && length(clients) > 0 do
+    quote do
+      import Spigot.UserAgent
+
+        @moduledoc """
+          we must at least have a method and uri available to initially construct a message
+
+          all other parameters should be provided in the options list:
+            body: an expression that yields a UTF8 string of a body
+              - examples:
+                - SDP media descriptions (RFC3261)
+                - BLF XML requests (RFC3265)
+                - SMS chardata (SIP SIMPLE Messages)
+        """
+
+      defmodule __MODULE__.ClientSupervisor do
+        use DynamicSupervisor
+
+        def start_link(_), do: start_link()
+
         def start_link() do
-          Enum.each(unquote(options[:clients]), fn x -> IO.inspect(x) end)
+          DynamicSupervisor.start_link(__MODULE__, [], name: __MODULE__)
+        end
+
+        def init(_) do
+          DynamicSupervisor.init(strategy: :one_for_one)
+        end
+
+        def start_child() do
+
+        end
+
+        if is_list(clients = unquote(options[:clients])) and length(clients) > 0 do
+          Spigot.UserAgent.Client.build_clients(clients)
         end
       end
-
-      defp do_send_resp(%Msg{start_line: %Resp{}} = resp),
-        do: Sippet.send(unquote(options[:name]), resp)
-
-      def send_resp(%Msg{start_line: %Resp{}} = resp), do: do_send_resp(resp)
-
-      def send_resp(%Msg{start_line: %Req{}} = req, status),
-        do: Msg.to_response(req, status) |> do_send_resp()
-
-      def send_resp(%Msg{start_line: %Req{}} = req, status, reason) when is_binary(reason),
-        do: Msg.to_response(req, status, reason) |> do_send_resp()
 
       def invite(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
       def ack(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
@@ -49,11 +69,29 @@ defmodule Spigot.UserAgent do
       def receive_request(%Msg{start_line: %Req{method: method}} = incoming_request, key),
         do: apply(__MODULE__, method, [incoming_request, key])
 
-      def receive_response(response, client_key),
-        do: raise("attempted to cal Router but no receive_response clause matched")
+      def receive_response(response, key),
+        do:
+          raise(
+            "UserAgent:#{__MODULE__} receive_response/2 failed to handle: #{inspect(key)}"
+          )
 
-      def receive_error(reason, client_or_server_key),
-        do: raise("TODO: attempted to call Router but no receive_error/2 clause matched")
+      def receive_error(reason, key),
+        do:
+          raise(
+            "UserAgent:#{__MODULE__} receive_error/2 failed to handle: #{inspect(key)}"
+          )
+
+      defp do_send_resp(%Msg{start_line: %Resp{}} = resp),
+        do: Sippet.send(unquote(options[:name]), resp)
+
+      def send_resp(%Msg{start_line: %Resp{}} = resp),
+        do: do_send_resp(resp)
+
+      def send_resp(%Msg{start_line: %Req{}} = req, status),
+        do: Msg.to_response(req, status) |> do_send_resp()
+
+      def send_resp(%Msg{start_line: %Req{}} = req, status, reason) when is_binary(reason),
+        do: Msg.to_response(req, status, reason) |> do_send_resp()
 
       defoverridable receive_request: 2,
                      receive_response: 2,

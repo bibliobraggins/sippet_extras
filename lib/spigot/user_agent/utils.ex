@@ -15,6 +15,46 @@ defmodule Spigot.UserAgent.Utils do
         String.downcase(method) |> String.to_existing_atom()
       end)
 
+  def from(msg, uri \\ nil, display_name \\ nil) do
+    uri =
+      if is_nil(uri) do
+        case msg do
+          %Msg{start_line: %Req{}} ->
+            msg.start_line.request_uri
+          %Msg{start_line: %Resp{}} ->
+            msg.status_line.response_uri
+        end
+      end
+
+    display_name =
+      if is_nil(display_name) do
+        ""
+      end
+
+    msg
+    |> Msg.put_header(:from, {display_name, uri, %{"tag" => Msg.create_tag()}})
+  end
+
+  def to(msg, uri \\ nil, display_name \\ nil) do
+    uri =
+      if is_nil(uri) do
+        case msg do
+          %Msg{start_line: %Req{}} ->
+            msg.start_line.request_uri
+          %Msg{start_line: %Resp{}} ->
+            msg.status_line.response_uri
+        end
+      end
+
+    display_name =
+      if is_nil(display_name) do
+        ""
+      end
+
+    msg
+    |> Msg.put_header(:to, {display_name, uri, %{"tag" => Msg.create_tag()}})
+  end
+
   def update_via(message) do
     message
     |> Msg.update_header_front(:via, fn {ver, proto, hostport, params} ->
