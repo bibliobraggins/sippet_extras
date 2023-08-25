@@ -15,10 +15,13 @@ defmodule Spigot.Transports.TCP.Server do
     {:continue, Keyword.put(state, :conn, TCP.key(peer.address, peer.port))}
   end
 
+  @keepalive <<13,10,13,10>>
   @impl ThousandIsland.Handler
-  def handle_data("\r\n\r\n", _socket, state), do: {:continue, state}
+  def handle_data(@keepalive, _socket, state), do: {:continue, state}
+
+  @exit_code <<255, 244, 255, 253, 6>>
   @impl ThousandIsland.Handler
-  def handle_data(<<255, 244, 255, 253, 6>>, _socket, state), do: {:close, state}
+  def handle_data(@exit_code, _socket, state), do: {:close, state}
 
   @impl ThousandIsland.Handler
   def handle_data(data, socket, state) do

@@ -3,11 +3,17 @@ defmodule Spigot.Transports.WS.Server do
 
   alias Spigot.Transports.WS, as: WS
 
+  @keepalive <<13,10,13,10>>
+  @exit_code <<255,244,255,253,6>>
+
   def init(options) do
     Logger.debug(options)
     WS.connect(:demo_connections, options[:peer], self())
     {:ok, options}
   end
+
+  def handle_in({@keepalive, _}, state), do: {:noreply, state}
+  def handle_in({@exit_code, _}, state), do: {:close, state}
 
   def handle_in({data, [opcode: _any]}, state) do
     peer = state[:peer]

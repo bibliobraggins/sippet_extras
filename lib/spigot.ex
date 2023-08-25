@@ -31,7 +31,7 @@ defmodule Spigot do
   def init(options) do
     children = [
       {Sippet, name: options[:user_agent]},
-      {options[:transport],
+      {transport_module(options[:transport]),
        [name: options[:user_agent], address: options[:address], port: options[:port]]},
       {options[:user_agent], options}
     ]
@@ -41,9 +41,11 @@ defmodule Spigot do
 
   def transport_module(id) do
     case id do
-      :tcp -> Spigot.Transports.TCP
       :udp -> Sippet.Transports.UDP
+      :tcp -> Spigot.Transports.TCP
+      :tls -> Spigot.Transports.TCP
       :ws -> Spigot.Transports.WS
+      :wss -> Spigot.Transports.WS
     end
   end
 end

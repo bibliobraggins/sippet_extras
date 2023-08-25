@@ -15,7 +15,11 @@ defmodule Spigot.Transports.WS.Plug do
       conn,
       Spigot.Transports.WS.Server,
       Keyword.put(options, :peer, get_peer_data(conn)),
-      timeout: 60_000
+      [
+        timeout: 60_000,
+        validate_utf8: true
+      ]
+
     )
   end
 end
