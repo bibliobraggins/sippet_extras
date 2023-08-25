@@ -1,6 +1,6 @@
 # Spigot
 
-Spigot aims to be a Plug style library for SIP applications.
+Spigot aims to be a [Plug](https://github.com/elixir-plug/plug) style library for SIP applications.
 
 TODO: 
   - debug and simplify TCP transport function calls
@@ -87,8 +87,18 @@ defmodule MyUserAgent do
   end
 end
 
-Spigot.start(user_agent: MyUserAgent, port: 5060, transport: :tcp)
+
 ```
+Provided that the module MyUSerAgent is present at compile time, we can now invoke:
+```
+
+iex(1)> Spigot.start(user_agent: MyUserAgent, port: 5060, transport: :tcp, address: "127.0.0.1")
+{:ok, #PID<0.251.0>}
+iex(2)> 
+[debug] #PID<0.259.0> started transport 127.0.0.1:5060/tcp
+```
+
+
 
 ## Installation
 
