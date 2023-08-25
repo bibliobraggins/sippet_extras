@@ -50,7 +50,7 @@ defmodule Spigot.Transports.TCP.Server do
 
   @impl ThousandIsland.Handler
   def handle_error(reason, _socket, state) do
-    Logger.error("#{inspect(reason)}")
+    Logger.error("#{inspect(self())}|#{inspect(reason)}")
     {:continue, state}
   end
 

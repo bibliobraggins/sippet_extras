@@ -64,14 +64,15 @@ The core library elixir-sippet provides built-in support for the following as we
 by far, the most commonly used are invite, bye, cancel, ack, register, subscribe, notify and options
     
 aimed features:
-  - off-the-shelf UDP, TCP, TLS, WS, and WSS connection handling that is transaction-aware.
+  - off-the-shelf UDP, TCP, TLS, WS, and WSS transports
+    - 
   - plug router style DSL for request handling
 
 ## Example
 
 ```elixir
 defmodule MyUserAgent do 
-  use Spigot.UserAgent, name: :my_service_1
+  use Spigot.UserAgent
   # define routes
   def ack(msg, _key) do
     send_resp(msg, 200)
@@ -89,7 +90,7 @@ defmodule MyUserAgent do
   end
 end
 
-Spigot.start(name: :my_service_1, port: 5060, transport: :tcp, user_agent: MyUserAgent)
+Spigot.start(user_agent: MyUserAgent, port: 5060, transport: :tcp)
 ```
 
 ## Installation

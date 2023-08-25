@@ -21,6 +21,7 @@ defmodule Spigot.UserAgent.Utils do
         case msg do
           %Msg{start_line: %Req{}} ->
             msg.start_line.request_uri
+
           %Msg{start_line: %Resp{}} ->
             msg.status_line.response_uri
         end
@@ -41,6 +42,7 @@ defmodule Spigot.UserAgent.Utils do
         case msg do
           %Msg{start_line: %Req{}} ->
             msg.start_line.request_uri
+
           %Msg{start_line: %Resp{}} ->
             msg.status_line.response_uri
         end

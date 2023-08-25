@@ -1,10 +1,5 @@
 defmodule Spigot do
-  require Logger
-
-  alias Spigot.Transports.TCP, as: TCP
-  alias Spigot.Transports.WS, as: WS
-
-  alias Sippet.Transports.UDP, as: UDP
+  use Supervisor
 
   # options = [
   #  :name,
@@ -19,48 +14,39 @@ defmodule Spigot do
 
   @transports [:udp, :tcp, :tls, :ws, :wss]
 
-  def start(options) do
-    user_agent =
-      if is_nil(options[:user_agent]) do
-        raise "a user_agent module must be provided to build a spigot"
+  def start_link(options) do
+    options =
+      if options[:transport] in @transports do
+        Keyword.put(options, :transport, transport_module(options[:transport]))
       else
-        options[:user_agent]
+        raise ArgumentError
+      end
+    options =
+      if options[:address] |> is_nil() do
+        Keyword.put(options, :address, "0.0.0.0")
       end
 
-    transport =
-      unless options[:transport] in @transports do
-        raise "a transport module must be provided to build a spigot"
-      else
-        transport(options[:transport])
-      end
+    Code.ensure_loaded(options[:user_agent])
 
-    if is_nil(options[:name]) do
-      raise "a name must be provided to build a spigot"
-    end
-
-    with {:ok, _sippet} <- Sippet.start_link(name: options[:name]),
-         {:ok, _transport} <- transport.start_link(options),
-         {:module, _user_agent} <- Code.ensure_loaded(user_agent),
-         :ok <- Sippet.register_core(options[:name], user_agent) do
-      {user_agent, options}
-    else
-      error -> raise "#{inspect(error)}"
-    end
+    Supervisor.start_link(__MODULE__, options)
   end
 
-  defp transport(transport) do
-    case transport do
-      :tcp ->
-        TCP
+  @impl true
+  def init(options) do
+    children = [
+      {Sippet, name: options[:user_agent]},
+      {options[:transport], [name: options[:user_agent], address: options[:address], port: options[:port]]},
+      {options[:user_agent], options}
+    ]
 
-      :udp ->
-        UDP
+    Supervisor.init(children, strategy: :one_for_one)
+  end
 
-      :ws ->
-        WS
-
-      unsupported ->
-        raise "transport option rejected: #{inspect(unsupported)}"
+  def transport_module(id) do
+    case id do
+      :tcp -> Spigot.Transports.TCP
+      :udp -> Sippet.Transports.UDP
+      :ws -> Spigot.Transports.WS
     end
   end
 end

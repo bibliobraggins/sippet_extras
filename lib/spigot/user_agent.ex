@@ -1,51 +1,20 @@
 defmodule Spigot.UserAgent do
+  require Logger
+
   alias Sippet.Message, as: Msg
   alias Msg.RequestLine, as: Req
   alias Msg.StatusLine, as: Resp
 
-  require Logger
-
   @type request :: %Msg{start_line: %Req{}}
   @type response :: %Msg{start_line: %Resp{}}
 
-  defmacro __using__(options) do
-    ## build children here
+  defmacro __using__(options \\ []) do
+    if is_list(clients = options[:clients]) and length(clients) > 0 do
+      Spigot.UserAgent.Client.build_clients(clients)
+    end
 
     quote do
       import Spigot.UserAgent
-
-        @moduledoc """
-          we must at least have a method and uri available to initially construct a message
-
-          all other parameters should be provided in the options list:
-            body: an expression that yields a UTF8 string of a body
-              - examples:
-                - SDP media descriptions (RFC3261)
-                - BLF XML requests (RFC3265)
-                - SMS chardata (SIP SIMPLE Messages)
-        """
-
-      defmodule __MODULE__.ClientSupervisor do
-        use DynamicSupervisor
-
-        def start_link(_), do: start_link()
-
-        def start_link() do
-          DynamicSupervisor.start_link(__MODULE__, [], name: __MODULE__)
-        end
-
-        def init(_) do
-          DynamicSupervisor.init(strategy: :one_for_one)
-        end
-
-        def start_child() do
-
-        end
-
-        if is_list(clients = unquote(options[:clients])) and length(clients) > 0 do
-          Spigot.UserAgent.Client.build_clients(clients)
-        end
-      end
 
       def invite(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
       def ack(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
@@ -70,19 +39,13 @@ defmodule Spigot.UserAgent do
         do: apply(__MODULE__, method, [incoming_request, key])
 
       def receive_response(response, key),
-        do:
-          raise(
-            "UserAgent:#{__MODULE__} receive_response/2 failed to handle: #{inspect(key)}"
-          )
+        do: raise("#{__MODULE__} receive_response/2 failed to handle: #{inspect(key)}")
 
       def receive_error(reason, key),
-        do:
-          raise(
-            "UserAgent:#{__MODULE__} receive_error/2 failed to handle: #{inspect(key)}"
-          )
+        do: raise("#{__MODULE__} receive_error/2 failed to handle: #{inspect(key)}")
 
       defp do_send_resp(%Msg{start_line: %Resp{}} = resp),
-        do: Sippet.send(unquote(options[:name]), resp)
+        do: Sippet.send(__MODULE__, resp)
 
       def send_resp(%Msg{start_line: %Resp{}} = resp),
         do: do_send_resp(resp)
@@ -92,6 +55,29 @@ defmodule Spigot.UserAgent do
 
       def send_resp(%Msg{start_line: %Req{}} = req, status, reason) when is_binary(reason),
         do: Msg.to_response(req, status, reason) |> do_send_resp()
+
+      use Supervisor
+
+      def start_link(options) when is_list(options) do
+        Supervisor.start_link(__MODULE__, options)
+      end
+
+      @impl true
+      def init(options) do
+        children = [
+          {Registry,
+           name: __MODULE__.ClientRegistry, keys: :unique, partitions: System.schedulers_online()},
+          {DynamicSupervisor, strategy: :one_for_one, name: __MODULE__.ClientSupervisor}
+        ]
+
+        with {:ok, ua_sup} <- Supervisor.init(children, strategy: :one_for_one) do
+          Sippet.register_core(__MODULE__, __MODULE__)
+          {:ok, ua_sup}
+        else
+          reason ->
+            raise("#{inspect(reason)}")
+        end
+      end
 
       defoverridable receive_request: 2,
                      receive_response: 2,
@@ -115,6 +101,8 @@ defmodule Spigot.UserAgent do
                      update: 2
     end
   end
+
+  ## build children here
 
   ## TODO: write out DSL for validation and SIP header/body manipulation
 end
