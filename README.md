@@ -86,18 +86,15 @@ defmodule MyUserAgent do
     send_resp(msg, status_code)
   end
 end
-
-
 ```
-Provided that the module MyUSerAgent is present at compile time, we can now invoke:
+Provided that the module MyUSerAgent is present at compile time,
+we can now call Spigot.start_link/2 and we should see the following if succesful:
 ```
-
 iex(1)> Spigot.start(user_agent: MyUserAgent, port: 5060, transport: :tcp, address: "127.0.0.1")
 {:ok, #PID<0.251.0>}
 iex(2)> 
 [debug] #PID<0.259.0> started transport 127.0.0.1:5060/tcp
 ```
-
 
 
 ## Installation
