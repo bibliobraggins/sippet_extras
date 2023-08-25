@@ -3,12 +3,17 @@
 Spigot aims to be a [Plug](https://github.com/elixir-plug/plug) style library for SIP applications.
 
 TODO: 
-  - debug and simplify TCP transport function calls
-    - client transaction support
-    - handle tls options in tcp handler
-  - Task based client Requests
-  - B2BUA mode
-  - media server
+  - TCP transport: 
+    - debug and simplify TCP transport function calls
+    - client transactions/connections
+    - handle tls options in server handler module
+  - WS transport: 
+    - allow users to override WS Plug with their own (allows for more complicated authorization and set up)
+    - server side module is not ready
+    - client side module is not begun
+  - Dynamic UserAgent mapping for B2BUA support
+  - UserAgent Client 
+    - dispatch api for client tasks, allow clients to handle own responses.
 
 About SIP: 
 
