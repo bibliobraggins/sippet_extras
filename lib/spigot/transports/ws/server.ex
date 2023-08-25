@@ -8,7 +8,7 @@ defmodule Spigot.Transports.WS.Server do
 
   def init(options) do
     Logger.debug(options)
-    WS.connect(:demo_connections, options[:peer], self())
+    WS.connect(Demo, options[:peer], self())
     {:ok, options}
   end
 

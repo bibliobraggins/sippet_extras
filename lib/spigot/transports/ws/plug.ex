@@ -1,25 +1,35 @@
 defmodule Spigot.Transports.WS.Plug do
   @behaviour Plug
-  import Plug.Conn
   require Logger
 
   @impl true
   def init(options) do
-    {:ok, options}
+    options
   end
 
   @impl true
   def call(%{request_path: "/", method: "GET"} = conn, options) do
-    # ["sip"] <- get_req_header(conn, "sec-websocket-protocol") do
-    WebSockAdapter.upgrade(
+    if Plug.Conn.get_req_header(conn, "sec-websocket-protocol") == ["sip"] do
+      WebSockAdapter.upgrade(
       conn,
       Spigot.Transports.WS.Server,
-      Keyword.put(options, :peer, get_peer_data(conn)),
+      Keyword.put(options, :peer, Plug.Conn.get_peer_data(conn)),
       [
         timeout: 60_000,
         validate_utf8: true
-      ]
-
-    )
+      ])
+    else
+      Plug.Conn.halt(conn)
+    end
   end
+
+  @impl true
+  def call(conn, _) do
+    forbidden(conn)
+  end
+
+  def forbidden(conn) do
+    Plug.Conn.send_resp(conn, 403, "must be a sip websocket")
+  end
+
 end
