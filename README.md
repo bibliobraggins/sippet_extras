@@ -3,7 +3,7 @@
 Spigot aims to be a Plug style library for SIP applications.
 
 TODO: 
-  - debug transports
+  - debug and simplify TCP transport function calls
     - client transaction support
     - handle tls options in tcp handler
   - Task based client Requests
@@ -14,7 +14,7 @@ About SIP:
 
 SIP as a protocol is similar to HTTP, with some key differences: 
   - SIP elements may be a client or server depending on if they are the origin or receiver of a message.
-  - Most any SIP element should be able to send and receive requests and responses, independent of origin.
+  - Elements may be on the public internet or behind a NAT layer
   - Common HTTP requests typically represent a simple request :: response pattern, 
     but with SIP INVITE's in particular, messages may need to be relayed to through
     many "hops" before a final response is received from an accepting party/peer.
@@ -60,12 +60,9 @@ The core library elixir-sippet provides built-in support for the following as we
   - PUSH
   - STORE
   - UPDATE
-
-by far, the most commonly used are invite, bye, cancel, ack, register, subscribe, notify and options
     
 aimed features:
   - off-the-shelf UDP, TCP, TLS, WS, and WSS transports
-    - 
   - plug router style DSL for request handling
 
 ## Example
