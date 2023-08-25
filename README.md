@@ -87,7 +87,7 @@ defmodule MyUserAgent do
   end
 end
 ```
-Provided that the module MyUSerAgent is present at compile time,
+Provided that the module MyUserAgent is present at compile time,
 we can now call Spigot.start_link/2 and we should see the following if succesful:
 ```
 iex(1)> Spigot.start(user_agent: MyUserAgent, port: 5060, transport: :tcp, address: "127.0.0.1")
