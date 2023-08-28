@@ -17,6 +17,8 @@ defmodule Spigot do
   def start_link(options) do
     unless options[:transport] in @transports, do: raise(ArgumentError)
 
+
+
     Code.ensure_loaded(options[:user_agent])
 
     Supervisor.start_link(__MODULE__, options)
