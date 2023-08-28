@@ -286,6 +286,13 @@ defmodule Spigot.Transports.WS do
     {:reply, :ok, state}
   end
 
+  @impl true
+  def terminate(_reason, state) do
+    :ets.delete(state[:connections])
+
+    {:ok, state}
+  end
+
   def resolve_name(host, family) do
     host
     |> String.to_charlist()

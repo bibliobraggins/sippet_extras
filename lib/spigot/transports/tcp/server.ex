@@ -15,7 +15,7 @@ defmodule Spigot.Transports.TCP.Server do
     {:continue, Keyword.put(state, :conn, TCP.key(peer.address, peer.port))}
   end
 
-  @keepalive <<13,10,13,10>>
+  @keepalive <<13, 10, 13, 10>>
   @impl ThousandIsland.Handler
   def handle_data(@keepalive, _socket, state), do: {:continue, state}
 
@@ -68,21 +68,27 @@ defmodule Spigot.Transports.TCP.Server do
   end
 
   @impl ThousandIsland.Handler
-  def handle_shutdown(socket, _state) do
+  def handle_shutdown(socket, state) do
     %{
       address: host,
       port: port,
       ssl_cert: _ssl_cert
     } = Socket.peer_info(socket)
 
-    Logger.debug(
-      "shutting down handler #{inspect(self())} : #{inspect(stringify_hostport(host, port))}"
-    )
+    case TCP.lookup_conn(state[:connections], state[:peer]) do
+      [_] ->
+        TCP.disconnect(state[:connections], state[:peer])
+
+      _ ->
+        nil
+    end
+
+    Logger.debug("shutting down handler #{inspect(self())} : #{stringify_hostport(host, port)}")
 
     :ok
   end
 
-  def stringify_hostport(host, port) do
-    "#{host}:#{port}"
+  def stringify_hostport(host, port) when is_tuple(host) do
+    "#{host |> :inet.ntoa() |> to_string()}:#{port}"
   end
 end

@@ -11,13 +11,12 @@ defmodule Spigot.Transports.WS.Plug do
   def call(%{request_path: "/", method: "GET"} = conn, options) do
     if Plug.Conn.get_req_header(conn, "sec-websocket-protocol") == ["sip"] do
       WebSockAdapter.upgrade(
-      conn,
-      Spigot.Transports.WS.Server,
-      Keyword.put(options, :peer, Plug.Conn.get_peer_data(conn)),
-      [
+        conn,
+        Spigot.Transports.WS.Server,
+        Keyword.put(options, :peer, Plug.Conn.get_peer_data(conn)),
         timeout: 60_000,
         validate_utf8: true
-      ])
+      )
     else
       Plug.Conn.halt(conn)
     end
@@ -31,5 +30,4 @@ defmodule Spigot.Transports.WS.Plug do
   def forbidden(conn) do
     Plug.Conn.send_resp(conn, 403, "must be a sip websocket")
   end
-
 end

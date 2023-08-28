@@ -3,13 +3,13 @@ defmodule Spigot.Transports.WS.Server do
 
   alias Spigot.Transports.WS, as: WS
 
-  @keepalive <<13,10,13,10>>
-  @exit_code <<255,244,255,253,6>>
+  @keepalive <<13, 10, 13, 10>>
+  @exit_code <<255, 244, 255, 253, 6>>
 
-  def init(options) do
-    Logger.debug(options)
-    WS.connect(Demo, options[:peer], self())
-    {:ok, options}
+  def init(state) do
+    Logger.debug(state)
+    WS.connect(Demo, state[:peer], self())
+    {:ok, state}
   end
 
   def handle_in({@keepalive, _}, state), do: {:noreply, state}
@@ -24,6 +24,7 @@ defmodule Spigot.Transports.WS.Server do
 
   def terminate(any, state) do
     Logger.debug(inspect(any))
+    WS.disconnect(Demo, state[:peer])
     {:ok, state}
   end
 end
