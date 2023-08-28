@@ -34,9 +34,21 @@ defmodule Spigot do
         _ -> Sippet.Transports.UDP
       end
 
+    IO.inspect(options)
+
+    name = options[:user_agent]
+    address =
+      case options[:address] do
+        addr ->
+          addr
+        :error ->
+          "0.0.0.0"
+      end
+    port = options[:port]
+
     children = [
       {Sippet, name: options[:user_agent]},
-      {transport, name: options[:user_agent], address: options[:address], port: options[:port]},
+      {transport, name: name, address: address, port: port},
       {options[:user_agent], options}
     ]
 

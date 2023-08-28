@@ -26,7 +26,8 @@ defmodule Spigot.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:sippet, "~> 1.0.1"},
+      # {:sippet, "~> 1.0.1"},
+      {:sippet, git: "https://github.com/bibliobraggins/elixir-sippet"},
       {:thousand_island, "~> 0.6.7"},
       {:bandit, "~> 0.7.7"},
       {:websock_adapter, "~> 0.5.3"},
