@@ -8,41 +8,76 @@ defmodule Spigot.UserAgent do
   @type request :: %Msg{start_line: %Req{}}
   @type response :: %Msg{start_line: %Resp{}}
 
-  defmacro __using__(options \\ []) do
-    if is_list(clients = options[:clients]) and length(clients) > 0 do
-      Spigot.UserAgent.Client.build_clients(clients)
-    end
+  defmacro invite(%Msg{start_line: %Req{}} = request, key),
+    do: compile(:invite, request, key, __CALLER__)
+  defmacro ack(%Msg{start_line: %Req{}} = request, key),
+    do: compile(:ack, request, key, __CALLER__)
+  defmacro bye(%Msg{start_line: %Req{}} = request, key),
+    do: compile(:bye, request, key, __CALLER__)
+  defmacro cancel(%Msg{start_line: %Req{}} = request, key),
+    do: compile(:cancel, request, key, __CALLER__)
+  defmacro refer(%Msg{start_line: %Req{}} = request, key),
+    do: compile(:refer, request, key, __CALLER__)
+  defmacro register(%Msg{start_line: %Req{}} = request, key),
+    do: compile(:register, request, key, __CALLER__)
+  defmacro subscribe(%Msg{start_line: %Req{}} = request, key),
+    do: compile(:subscribe, request, key, __CALLER__)
+  defmacro notify(%Msg{start_line: %Req{}} = request, key),
+    do: compile(:notify, request, key, __CALLER__)
+  defmacro options(%Msg{start_line: %Req{}} = request, key),
+    do: compile(:options, request, key, __CALLER__)
+  defmacro info(%Msg{start_line: %Req{}} = request, key),
+    do: compile(:info, request, key, __CALLER__)
+  defmacro message(%Msg{start_line: %Req{}} = request, key),
+    do: compile(:message, request, key, __CALLER__)
+  defmacro prack(%Msg{start_line: %Req{}} = request, key),
+    do: compile(:prack, request, key, __CALLER__)
+  defmacro publish(%Msg{start_line: %Req{}} = request, key),
+    do: compile(:publish, request, key, __CALLER__)
+  defmacro pull(%Msg{start_line: %Req{}} = request, key),
+    do: compile(:pull, request, key, __CALLER__)
+  defmacro push(%Msg{start_line: %Req{}} = request, key),
+    do: compile(:push, request, key, __CALLER__)
+  defmacro store(%Msg{start_line: %Req{}} = request, key),
+    do: compile(:store, request, key, __CALLER__)
+  defmacro update(%Msg{start_line: %Req{}} = request, key),
+    do: compile(:update, request, key, __CALLER__)
 
+  def compile(method, request, key, caller) do
+    quote do
+      unquote(method)(unquote(request), unquote(key))
+    end
+  end
+
+  defp wrap_function_do(body) do
+    quote do
+      fn var!(conn), var!(opts) ->
+        _ = var!(opts)
+        unquote(body)
+      end
+    end
+  end
+
+  defmacro __before_compile__(_) do
+    Logger.debug(extract_methods(__CALLER__.module))
+    quote do
+    end
+  end
+
+  defp extract_methods(user_module) do
+    user_module
+    |> Module.get_attribute(:__info__)
+  end
+
+  def extract_guards({:when, _, [_, guards]}), do: guards
+
+  defmacro __using__(_) do
     quote do
       import Spigot.UserAgent
+      @before_compile Spigot.UserAgent
 
-      def invite(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
-      def ack(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
-      def bye(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
-      def cancel(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
-      def refer(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
-      def register(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
-      def subscribe(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
-      def notify(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
-      def options(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
-      def info(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
-      def message(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
-      def prack(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
-      def publish(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
-      def pull(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
-      def push(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
-      def store(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
-      def update(%Msg{start_line: %Req{}} = req, _), do: send_resp(req, 501)
-
-      @doc "this is a minimal helper to allow declarative request handling"
-      def receive_request(%Msg{start_line: %Req{method: method}} = incoming_request, key),
-        do: apply(__MODULE__, method, [incoming_request, key])
-
-      def receive_response(response, key),
-        do: raise("#{__MODULE__} receive_response/2 failed to handle: #{inspect(key)}")
-
-      def receive_error(reason, key),
-        do: raise("#{__MODULE__} receive_error/2 failed to handle: #{inspect(key)}")
+      def receive_request(%Msg{start_line: %Req{method: method}} = request, key) do
+      end
 
       defp do_send_resp(%Msg{start_line: %Resp{}} = resp),
         do: Sippet.send(__MODULE__, resp)
@@ -79,26 +114,6 @@ defmodule Spigot.UserAgent do
         end
       end
 
-      defoverridable receive_request: 2,
-                     receive_response: 2,
-                     receive_error: 2,
-                     ack: 2,
-                     bye: 2,
-                     cancel: 2,
-                     info: 2,
-                     invite: 2,
-                     message: 2,
-                     notify: 2,
-                     options: 2,
-                     prack: 2,
-                     publish: 2,
-                     pull: 2,
-                     push: 2,
-                     refer: 2,
-                     register: 2,
-                     store: 2,
-                     subscribe: 2,
-                     update: 2
     end
   end
 
