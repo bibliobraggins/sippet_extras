@@ -1,4 +1,4 @@
-defmodule Spigot.Transports.TCP.Server do
+defmodule Spigot.T.Server do
   use ThousandIsland.Handler
 
   alias ThousandIsland

@@ -1,4 +1,4 @@
-defmodule Spigot.Transports.TCP do
+defmodule Spigot.T.TCP do
   @moduledoc """
   Implements a TCP transport via ThousandIsland
   """

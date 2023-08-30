@@ -38,11 +38,11 @@ defmodule Spigot.Types do
   @type response() :: %SIP{start_line: Response}
   @typedoc """
   """
-  @type message() :: request() | response()
+  @type message() :: iodata()
   @typedoc """
   """
   @type error :: Spigot.TransportError.t() | Spigot.SIPError.t()
   @typedoc """
   """
-  @type socket() :: {:udp, address()} | term()
+  @type socket() :: term()
 end

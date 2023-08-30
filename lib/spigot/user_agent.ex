@@ -20,7 +20,7 @@ defmodule Spigot.UserAgent do
         ]
 
         with {:ok, ua_sup} <- Supervisor.init(children, strategy: :one_for_one) do
-          {:ok, self()}
+          {:ok, ua_sup}
         else
           reason ->
             {:error, inspect(reason)}
