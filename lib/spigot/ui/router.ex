@@ -1,8 +1,8 @@
-defmodule LevUi.Router do
+defmodule Spigot.UI.Router do
   use Plug.Router
 
-  plug :match
-  plug :dispatch
+  plug(:match)
+  plug(:dispatch)
 
   def init(options) do
     options
