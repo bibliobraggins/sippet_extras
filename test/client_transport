@@ -1,12 +1,11 @@
-defmodule Spigot.Transport do
-  alias Spigot.Types
+defmodule Spigot.Client do
 
   @type error :: {:error, term()}
 
   @callback init(Types.address(), Types.port(), opts :: keyword()) ::
     {:ok, Types.socket()} | error()
 
-  @callback connect(Types.address(), Types.port(), opts :: keyword()) ::
+  @callback connect(Types.socket, Types.address(), Types.port(), opts :: keyword()) ::
     {:ok, Types.socket}
 
   @callback negotiated_protocol(Types.socket()) ::
@@ -31,7 +30,7 @@ defmodule Spigot.Transport do
     {:ok, opts :: keyword()} | error()
 
   @optional_callbacks [
-    connect: 3,
+    connect: 4,
     negotiated_protocol: 1,
     controlling_process: 2,
     setopts: 2,

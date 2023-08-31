@@ -1,18 +1,18 @@
-defmodule Spigot.T.Server do
+defmodule Spigot.Transport.Server do
   use ThousandIsland.Handler
 
   alias ThousandIsland
-  alias ThousandIsland.Socket
+  alias ThousandIsland.Socket, as: Socket
+  alias Spigot.Connections
   alias Sippet.Message, as: Message
-  alias Spigot.Transports.TCP
 
   require Logger
 
   @impl ThousandIsland.Handler
   def handle_connection(socket, state) do
-    peer = Socket.peer_info(socket)
-    TCP.connect(state[:connections], peer, self())
-    {:continue, Keyword.put(state, :conn, TCP.key(peer.address, peer.port))}
+    reference = :erlang.make_ref()
+    Connections.connect(state[:connections], reference, self())
+    {:continue, Keyword.put(state, :reference, reference)}
   end
 
   @keepalive <<13, 10, 13, 10>>
@@ -62,7 +62,7 @@ defmodule Spigot.T.Server do
 
   @impl ThousandIsland.Handler
   def handle_close(_socket, state) do
-    TCP.disconnect(state[:connections], state[:conn])
+    Connections.disconnect(state[:connections], state[:reference])
 
     :ok
   end
@@ -75,9 +75,9 @@ defmodule Spigot.T.Server do
       ssl_cert: _ssl_cert
     } = Socket.peer_info(socket)
 
-    case TCP.lookup_conn(state[:connections], state[:peer]) do
+    case Connections.lookup_conn(state[:connections], state[:peer]) do
       [_] ->
-        TCP.disconnect(state[:connections], state[:peer])
+        Connections.disconnect(state[:connections], state[:peer])
 
       _ ->
         nil

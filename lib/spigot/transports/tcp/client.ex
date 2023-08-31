@@ -5,6 +5,8 @@ defmodule Spigot.Transports.TCP.Client do
   alias Sippet.Message, as: Msg
   import Spigot.Transports.TCP
 
+  alias Spigot.Connections, as: Connections
+
   @type option :: :connections | :timeout | :peer | :socket | :start_message | :retries
   @type options :: [option]
 
@@ -67,7 +69,7 @@ defmodule Spigot.Transports.TCP.Client do
       end
 
     ip =
-      case resolve_name(address, family) do
+      case Connections.resolve_name(address, family) do
         {:ok, ip} ->
           ip
 
