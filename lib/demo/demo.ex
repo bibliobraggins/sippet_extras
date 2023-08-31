@@ -16,12 +16,11 @@ defmodule Demo do
       }
     ]
 
-  def register(msg) do
+  def subscribe(msg) do
     Logger.info("Request:\n#{to_string(msg)}")
     response = Sippet.Message.to_response(msg, 200)
 
     Logger.info("Response:\n#{to_string(response)}")
     response
-    |> Sippet.Message.to_iodata
   end
 end

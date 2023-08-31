@@ -26,30 +26,17 @@ defmodule Spigot.Transports.TCPServer do
   @impl ThousandIsland.Handler
   def handle_data(data, socket, state) do
     with {:ok, message} <- Message.parse(data),
-        response <- apply(state[:user_agent], :handle_request, [message])
+        # use a route attribute in the provided user_agent to clean this up, using apply/3 is undesirable.
+        response <- apply(state[:user_agent], :handle_request, [message]),
+        io_response <- Message.to_iodata(response)
       do
-        ThousandIsland.Socket.send(socket, response)
+        ThousandIsland.Socket.send(socket, io_response)
       else
         reason ->
           Logger.error("could not parse message from #{inspect(Socket.peer_info(socket))} :: reason: #{reason}")
     end
 
     {:continue, state}
-  end
-
-  @impl GenServer
-  def handle_info({:send_message, message}, {socket, state}) do
-    with io_msg <- Message.to_iodata(message) do
-      Logger.debug("Sending:\n#{to_string(message)}")
-      ThousandIsland.Socket.send(socket, io_msg) |> Logger.debug()
-    else
-      error ->
-        Logger.error(
-          "Could not change message to io list. reason: #{inspect(error)}\n#{inspect(message)}"
-        )
-    end
-
-    {:noreply, {socket, state}}
   end
 
   @impl ThousandIsland.Handler
@@ -67,22 +54,14 @@ defmodule Spigot.Transports.TCPServer do
   end
 
   @impl ThousandIsland.Handler
-  def handle_shutdown(socket, state) do
-    %{
-      address: host,
-      port: port,
-      ssl_cert: _ssl_cert
-    } = Socket.peer_info(socket)
-
-    case Connections.lookup(state[:connections], state[:peer]) do
+  def handle_shutdown(_socket, state) do
+    case Connections.lookup(state[:connections], state[:reference]) do
       [_] ->
-        Connections.disconnect(state[:connections], state[:peer])
+        Connections.disconnect(state[:connections], state[:reference])
 
       _ ->
         nil
-    end
-
-    Logger.debug("shutting down handler #{inspect(self())} : #{stringify_hostport(host, port)}")
+      end
 
     :ok
   end
