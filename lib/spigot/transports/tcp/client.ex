@@ -3,7 +3,6 @@ defmodule Spigot.Transports.TCP.Client do
   require Logger
 
   alias Sippet.Message, as: Msg
-  import Spigot.Transports.TCP
 
   alias Spigot.Connections, as: Connections
 

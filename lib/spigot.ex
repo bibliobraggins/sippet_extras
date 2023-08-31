@@ -67,7 +67,7 @@ defmodule Spigot do
   @impl true
   def init({user_agent, transport_module, options}) do
     children = [
-      {transport_module, Keyword.merge([user_agent: user_agent], options[:transport_options])},
+      {transport_module, Keyword.merge([user_agent: user_agent], options)},
       {user_agent, options}
     ]
 

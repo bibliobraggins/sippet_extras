@@ -7,10 +7,10 @@ defmodule Spigot.Transports.TCP do
 
   require Logger
 
-  alias Sippet.Message, as: Message
-  alias Message.RequestLine, as: Request
-  alias Message.StatusLine, as: Response
-  alias Spigot.Transports.TCP.Server, as: Server
+  # alias Sippet.Message, as: Message
+  # alias Message.RequestLine, as: Request
+  # alias Message.StatusLine, as: Response
+  alias Spigot.Transports.TCPServer, as: Server
 
   alias Spigot.Connections
 
@@ -77,14 +77,12 @@ defmodule Spigot.Transports.TCP do
                 ":address contains an invalid IP or DNS name, got: #{inspect(reason)}"
       end
 
-    connections = Connections.init()
-
     GenServer.start_link(__MODULE__,
       user_agent: user_agent,
       ip: ip,
       port: port,
       family: family,
-      connections: connections
+      connections: Connections.init(Module.concat([user_agent, :connections]))
     )
   end
 
@@ -107,8 +105,9 @@ defmodule Spigot.Transports.TCP do
        ]}
     ]
 
-    with {:ok, _pid} <- Supervisor.start_link(children, strategy: :one_for_one),
-         :ok <- Sippet.register_transport(options[:user_agent], :tcp, true) do
+    with {:ok, _pid} <- Supervisor.start_link(children, strategy: :one_for_one)
+         #:ok <- Sippet.register_transport(options[:user_agent], :tcp, true)
+        do
       Logger.debug(
         "#{inspect(self())} started transport #{stringify_sockname(options[:ip], options[:port])}/tcp"
       )

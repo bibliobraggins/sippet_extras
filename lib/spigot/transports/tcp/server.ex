@@ -1,4 +1,4 @@
-defmodule Spigot.Transport.Server do
+defmodule Spigot.Transports.TCPServer do
   use ThousandIsland.Handler
 
   alias ThousandIsland
@@ -9,7 +9,7 @@ defmodule Spigot.Transport.Server do
   require Logger
 
   @impl ThousandIsland.Handler
-  def handle_connection(socket, state) do
+  def handle_connection(_socket, state) do
     reference = :erlang.make_ref()
     Connections.connect(state[:connections], reference, self())
     {:continue, Keyword.put(state, :reference, reference)}
@@ -25,13 +25,14 @@ defmodule Spigot.Transport.Server do
 
   @impl ThousandIsland.Handler
   def handle_data(data, socket, state) do
-    peer = Socket.peer_info(socket)
-
-    Sippet.Router.handle_transport_message(
-      state[:name],
-      data,
-      {:tcp, peer.address, peer.port}
-    )
+    with {:ok, message} <- Message.parse(data),
+        response <- apply(state[:user_agent], :handle_request, [message])
+      do
+        ThousandIsland.Socket.send(socket, response)
+      else
+        reason ->
+          Logger.error("could not parse message from #{inspect(Socket.peer_info(socket))} :: reason: #{reason}")
+    end
 
     {:continue, state}
   end
@@ -40,7 +41,7 @@ defmodule Spigot.Transport.Server do
   def handle_info({:send_message, message}, {socket, state}) do
     with io_msg <- Message.to_iodata(message) do
       Logger.debug("Sending:\n#{to_string(message)}")
-      ThousandIsland.Socket.send(socket, io_msg)
+      ThousandIsland.Socket.send(socket, io_msg) |> Logger.debug()
     else
       error ->
         Logger.error(
@@ -63,8 +64,6 @@ defmodule Spigot.Transport.Server do
   @impl ThousandIsland.Handler
   def handle_close(_socket, state) do
     Connections.disconnect(state[:connections], state[:reference])
-
-    :ok
   end
 
   @impl ThousandIsland.Handler
@@ -75,7 +74,7 @@ defmodule Spigot.Transport.Server do
       ssl_cert: _ssl_cert
     } = Socket.peer_info(socket)
 
-    case Connections.lookup_conn(state[:connections], state[:peer]) do
+    case Connections.lookup(state[:connections], state[:peer]) do
       [_] ->
         Connections.disconnect(state[:connections], state[:peer])
 
