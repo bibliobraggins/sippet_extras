@@ -1,4 +1,4 @@
-defmodule Spigot.Transports.TCP.Client do
+defmodule Spigot.Transport.TCP.Client do
   use GenServer
   require Logger
 

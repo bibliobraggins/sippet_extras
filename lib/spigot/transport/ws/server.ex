@@ -1,7 +1,7 @@
-defmodule Spigot.Transports.WS.Server do
+defmodule Spigot.Transport.WS.Server do
   require Logger
 
-  alias Spigot.Transports.WS, as: WS
+  alias Spigot.Transport.WS, as: WS
 
   def init(state) do
     Logger.debug(state)

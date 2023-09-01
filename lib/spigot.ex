@@ -53,12 +53,12 @@ defmodule Spigot do
 
     transport_module =
       case options[:transport] do
-        :udp -> Sippet.Transports.UDP
-        :tcp -> Spigot.Transports.TCP
-        :tls -> Spigot.Transports.TCP
-        :ws -> Spigot.Transports.WS
-        :wss -> Spigot.Transports.WS
-        _ -> Sippet.Transports.UDP
+        :udp -> Sippet.Transport.UDP
+        :tcp -> Spigot.Transport.TCP
+        :tls -> Spigot.Transport.TCP
+        :ws -> Spigot.Transport.WS
+        :wss -> Spigot.Transport.WS
+        _ -> Sippet.Transport.UDP
       end
 
     Supervisor.start_link(__MODULE__, {user_agent, transport_module, options})

@@ -1,4 +1,4 @@
-defmodule Spigot.Transports.WS do
+defmodule Spigot.Transport.WS do
   @moduledoc """
     Below is an example of a WebSocket handshake in which the client
     requests the WebSocket SIP subprotocol support from the server:
@@ -234,7 +234,7 @@ defmodule Spigot.Transports.WS do
     children = [
       {
         Bandit,
-        plug: Spigot.Transports.WS.Plug,
+        plug: Spigot.Transport.WS.Plug,
         scheme: options[:scheme],
         ip: options[:ip],
         port: options[:port],

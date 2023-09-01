@@ -1,4 +1,4 @@
-defmodule Spigot.Transports.WS.Plug do
+defmodule Spigot.Transport.WS.Plug do
   @behaviour Plug
   require Logger
 
@@ -12,7 +12,7 @@ defmodule Spigot.Transports.WS.Plug do
     if Plug.Conn.get_req_header(conn, "sec-websocket-protocol") == ["sip"] do
       WebSockAdapter.upgrade(
         conn,
-        Spigot.Transports.WS.Server,
+        Spigot.Transport.WS.Server,
         Keyword.put(options, :peer, Plug.Conn.get_peer_data(conn)),
         timeout: 60_000,
         validate_utf8: true
