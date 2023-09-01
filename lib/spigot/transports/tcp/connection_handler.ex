@@ -21,7 +21,7 @@ defmodule Spigot.Transports.TCP.ConnectionHandler do
 
   @impl ThousandIsland.Handler
   def handle_data(data, _socket, state) do
-    Logger.debug("Received:\n#{inspect(Sippet.Message.parse!(data))}")
+    Logger.debug("Received:\n#{inspect(Sippet.Message.parse!(data) |> to_string())}")
 
     {:continue, state}
   end

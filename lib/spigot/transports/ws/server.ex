@@ -14,7 +14,7 @@ defmodule Spigot.Transports.WS.Server do
   # opcode handling needs to be
 
   def handle_in({data, [opcode: _any]}, state) do
-    Logger.debug("Received:\n#{inspect(Sippet.Message.parse!(data))}")
+    Logger.debug("Received:\n#{inspect(Sippet.Message.parse!(data) |> to_string())}")
 
     ## if we can parse the io message, we should begin a transaction,
     ## pass it into state, then delegate to to a transaction handler module
