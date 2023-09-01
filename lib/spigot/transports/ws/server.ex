@@ -20,7 +20,8 @@ defmodule Spigot.Transports.WS.Server do
     ## pass it into state, then delegate to to a transaction handler module
     ## that will be responsible for passing it up to the "user_agent"
 
-    {:reply, :ok, {:text, Sippet.Message.to_iodata(data)}, state}
+    #{:reply, :ok, {:text, "OK"}, state}
+    {:ok, state}
   end
 
   def terminate(_any, state) do

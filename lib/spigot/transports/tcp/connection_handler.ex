@@ -2,8 +2,6 @@ defmodule Spigot.Transports.TCP.ConnectionHandler do
   use ThousandIsland.Handler
 
   alias ThousandIsland
-  alias ThousandIsland.Socket, as: Socket
-  alias Sippet.Message, as: Message
 
   require Logger
 
@@ -22,17 +20,8 @@ defmodule Spigot.Transports.TCP.ConnectionHandler do
   def handle_data(@exit_code, _socket, state), do: {:close, state}
 
   @impl ThousandIsland.Handler
-  def handle_data(data, socket, state) do
-    with {:ok, message} <- Message.parse(data),
-        # use a route attribute in the provided user_agent to clean this up, using apply/3 is undesirable.
-        response <- apply(state[:user_agent], :handle_request, [message]),
-        io_response <- Message.to_iodata(response)
-      do
-        ThousandIsland.Socket.send(socket, io_response)
-      else
-        reason ->
-          Logger.error("could not parse message from #{inspect(Socket.peer_info(socket))} :: reason: #{reason}")
-    end
+  def handle_data(data, _socket, state) do
+    Logger.debug("Received:\n#{inspect(Sippet.Message.parse!(data))}")
 
     {:continue, state}
   end
