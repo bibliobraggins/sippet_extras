@@ -1,9 +1,8 @@
-defmodule Spigot.Transport.TCP.ConnectionHandler do
+defmodule Spigot.Transports.TCP.ConnectionHandler do
   use ThousandIsland.Handler
 
   alias ThousandIsland
   alias ThousandIsland.Socket, as: Socket
-  alias Spigot.Connections
   alias Sippet.Message, as: Message
 
   require Logger
@@ -11,7 +10,6 @@ defmodule Spigot.Transport.TCP.ConnectionHandler do
   @impl ThousandIsland.Handler
   def handle_connection(_socket, state) do
     reference = :erlang.make_ref()
-    Connections.connect(state[:connections], reference, self())
     {:continue, Keyword.put(state, :reference, reference)}
   end
 
@@ -49,20 +47,10 @@ defmodule Spigot.Transport.TCP.ConnectionHandler do
   def handle_timeout(_socket, state), do: {:close, state}
 
   @impl ThousandIsland.Handler
-  def handle_close(_socket, state) do
-    Connections.disconnect(state[:connections], state[:reference])
-  end
+  def handle_close(_socket, state), do: {:shutdown, state}
 
   @impl ThousandIsland.Handler
-  def handle_shutdown(_socket, state) do
-    case Connections.lookup(state[:connections], state[:reference]) do
-      [_] ->
-        Connections.disconnect(state[:connections], state[:reference])
-
-      _ ->
-        nil
-      end
-
+  def handle_shutdown(_socket, _state) do
     :ok
   end
 

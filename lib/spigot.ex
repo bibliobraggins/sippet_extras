@@ -53,22 +53,27 @@ defmodule Spigot do
 
     transport_module =
       case options[:transport] do
-        :udp -> Sippet.Transport.UDP
-        :tcp -> Spigot.Transport.TCP
-        :tls -> Spigot.Transport.TCP
-        :ws -> Spigot.Transport.WS
-        :wss -> Spigot.Transport.WS
-        _ -> Sippet.Transport.UDP
+        :udp -> Sippet.Transports.UDP
+        :tcp -> Spigot.Transports.TCP
+        :tls -> Spigot.Transports.TCP
+        :ws -> Spigot.Transports.WS
+        :wss -> Spigot.Transports.WS
+        _ ->
+          raise "must provide a supported transport options"
       end
 
-    Supervisor.start_link(__MODULE__, {user_agent, transport_module, options})
+    Supervisor.start_link(
+      __MODULE__, {
+        transport_module,
+        Keyword.merge([user_agent: user_agent], options)
+      })
   end
 
   @impl true
-  def init({user_agent, transport_module, options}) do
+  def init(transport) do
     children = [
-      {transport_module, Keyword.merge([user_agent: user_agent], options)},
-      {user_agent, options}
+      transport,
+      # {user_agent, options}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

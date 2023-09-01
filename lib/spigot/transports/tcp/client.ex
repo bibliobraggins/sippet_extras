@@ -1,10 +1,8 @@
-defmodule Spigot.Transport.TCP.Client do
+defmodule Spigot.Transports.TCP.Client do
   use GenServer
   require Logger
 
   alias Sippet.Message, as: Msg
-
-  alias Spigot.Connections, as: Connections
 
   @type option :: :connections | :timeout | :peer | :socket | :start_message | :retries
   @type options :: [option]
@@ -68,7 +66,7 @@ defmodule Spigot.Transport.TCP.Client do
       end
 
     ip =
-      case Connections.resolve_name(address, family) do
+      case resolve_name(address, family) do
         {:ok, ip} ->
           ip
 
@@ -181,4 +179,20 @@ defmodule Spigot.Transport.TCP.Client do
     Logger.info("unexpected message: #{inspect(othr)}")
     {:noreply, state}
   end
+
+  def resolve_name(host, family) do
+    host
+    |> String.to_charlist()
+    |> :inet.getaddr(family)
+  end
+
+  def stringify_sockname(ip, port) do
+    address =
+      ip
+      |> :inet_parse.ntoa()
+      |> to_string()
+
+    "#{address}:#{port}"
+  end
+
 end

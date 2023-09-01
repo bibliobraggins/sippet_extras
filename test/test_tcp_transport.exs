@@ -40,7 +40,7 @@ defmodule Spigot.Test.TCP do
   test "tcp client connects", state do
     Logger.debug(inspect(test_msg(state)))
 
-    Spigot.Transport.TCP.Client.start_link(
+    Spigot.Transports.TCP.Client.start_link(
       connections: :test_tcp_transport,
       start_message: test_msg(state),
       timeout: 10_000,

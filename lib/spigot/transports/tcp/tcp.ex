@@ -1,18 +1,15 @@
-defmodule Spigot.Transport.TCP do
+defmodule Spigot.Transports.TCP do
   @moduledoc """
   Implements a TCP transport via ThousandIsland
   """
 
-  use GenServer
-
   require Logger
+
+  use GenServer
 
   # alias Sippet.Message, as: Message
   # alias Message.RequestLine, as: Request
   # alias Message.StatusLine, as: Response
-  alias Spigot.Transport.TCPServer, as: Server
-
-  alias Spigot.Connections
 
   @doc false
   def child_spec(options) do
@@ -42,12 +39,8 @@ defmodule Spigot.Transport.TCP do
       case Keyword.fetch(options, :port) do
         {:ok, port} when is_integer(port) and port > 0 and port < 65536 ->
           port
-
-        {:ok, nil} ->
-          raise ArgumentError, "a port number must be provided to use this transport"
-
-        :error ->
-          raise ArgumentError, "could not use provided port, got: #{options[:port]}"
+        _ ->
+          5060
       end
 
     {address, family} =
@@ -68,7 +61,7 @@ defmodule Spigot.Transport.TCP do
       end
 
     ip =
-      case Connections.resolve_name(address, family) do
+      case resolve_name(address, family) do
         {:ok, ip} ->
           ip
 
@@ -77,48 +70,46 @@ defmodule Spigot.Transport.TCP do
                 ":address contains an invalid IP or DNS name, got: #{inspect(reason)}"
       end
 
-    GenServer.start_link(__MODULE__,
+      GenServer.start_link(__MODULE__,
       user_agent: user_agent,
       ip: ip,
       port: port,
-      family: family,
-      connections: Connections.init(Module.concat([user_agent, :connections]))
+      family: family
     )
   end
 
   @impl true
   def init(options) do
-    {:ok, nil, {:continue, options}}
-  end
-
-  @impl true
-  def handle_continue(options, nil) do
     children = [
-      {ThousandIsland,
-       port: options[:port],
-       transport_options: [ip: options[:ip]],
-       handler_module: Server,
-       handler_options: [
-         user_agent: options[:user_agent],
-         family: options[:family],
-         connections: options[:connections]
-       ]}
+      {
+        ThousandIsland,
+        port: options[:port],
+        transport_options: [ip: options[:ip]],
+        handler_module: Spigot.Transports.TCP.ConnectionHandler,
+        handler_options: [
+          user_agent: options[:user_agent],
+        ]
+      }
     ]
 
     with {:ok, _pid} <- Supervisor.start_link(children, strategy: :one_for_one)
-         #:ok <- Sippet.register_transport(options[:user_agent], :tcp, true)
+          #:ok <- Sippet.register_transport(options[:user_agent], :tcp, true)
         do
       Logger.debug(
         "#{inspect(self())} started transport #{stringify_sockname(options[:ip], options[:port])}/tcp"
       )
 
-      {:noreply, options}
+      {:ok, options}
     else
       error ->
-        Logger.error("could not start tcp socket, reason: #{inspect(error)}")
-        Process.sleep(5_000)
-        {:noreply, nil, {:continue, options}}
+        {:error, error}
     end
+  end
+
+  def resolve_name(host, family) do
+    host
+    |> String.to_charlist()
+    |> :inet.getaddr(family)
   end
 
   def stringify_sockname(ip, port) do
@@ -129,4 +120,5 @@ defmodule Spigot.Transport.TCP do
 
     "#{address}:#{port}"
   end
+
 end

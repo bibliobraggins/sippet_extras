@@ -43,8 +43,10 @@ defmodule Spigot.Transaction do
           final: Types.response() | nil
         }
 
+  @spec new(Sippet.Message.t()) :: t()
   def new(%SIP{start_line: %Request{}} = request), do: struct(__MODULE__, request: request)
 
+  @spec put_response(map, Sippet.Message.t()) :: t()
   def put_response(transaction, %SIP{start_line: %Response{status_code: status_code}} = response) do
     cond do
       status_code in [100..199] ->

@@ -1,4 +1,4 @@
-defmodule Spigot.Transport.WS do
+defmodule Spigot.Transports.WS do
   @moduledoc """
     Below is an example of a WebSocket handshake in which the client
     requests the WebSocket SIP subprotocol support from the server:
@@ -72,9 +72,6 @@ defmodule Spigot.Transport.WS do
 
 
   """
-  alias Sippet.Message, as: Message
-  alias Message.RequestLine, as: Request
-  alias Message.StatusLine, as: Response
 
   use GenServer
 
@@ -94,16 +91,16 @@ defmodule Spigot.Transport.WS do
   require Logger
 
   def start_link(options) do
-    name =
-      case Keyword.fetch(options, :name) do
-        {:ok, name} when is_atom(name) ->
-          name
+    user_agent =
+      case Keyword.fetch(options, :user_agent) do
+        {:ok, user_agent} when is_atom(user_agent) ->
+          user_agent
 
         {:ok, other} ->
-          raise ArgumentError, "expected :name to be an atom, got: #{inspect(other)}"
+          raise ArgumentError, "expected :user_agent to be a module, got: #{inspect(other)}"
 
         :error ->
-          raise ArgumentError, "expected :name option to be present"
+          raise ArgumentError, "expected :user_agent option to be present"
       end
 
     port =
@@ -146,16 +143,7 @@ defmodule Spigot.Transport.WS do
                 ":address contains an invalid IP or DNS name, got: #{inspect(reason)}"
       end
 
-    websocket_options =
-      case Keyword.fetch(options, :websocket_options) do
-        {:ok, opts} when is_list(opts) ->
-          opts
-
-        _ ->
-          []
-      end
-
-    {scheme, tls_options} =
+    {scheme, _tls_options} =
       with {:ok, tls_opts} when is_list(tls_opts) <- Keyword.fetch(options, :tls_options) do
         ## get cipher, key, cert...
         {:https, tls_opts}
@@ -164,133 +152,37 @@ defmodule Spigot.Transport.WS do
           {:http, []}
       end
 
-    connections =
-      :ets.new(:"#{name}_connections", [
-        :named_table,
-        :set,
-        :public,
-        {:write_concurrency, true}
-      ])
-
-    GenServer.start_link(__MODULE__,
-      name: name,
-      ip: ip,
-      port: port,
-      family: family,
+    GenServer.start_link(
+      __MODULE__,
+      user_agent: user_agent,
       scheme: scheme,
-      websocket_options: websocket_options,
-      connections: connections,
-      tls_options: tls_options
+      ip: ip,
+      port: port
     )
   end
 
-  @impl GenServer
+  @impl true
   def init(options) do
-    {:ok, nil, {:continue, options}}
-  end
-
-  @spec key(:inet.ip_address(), 0..65535) :: binary
-  def key(ip, port), do: :erlang.term_to_binary({ip, port})
-
-  @spec connect(atom | :ets.tid(), binary | map, pid | atom) :: boolean
-  def connect(connections, peer = %{address: _, port: _, ssl_cert: _}, handler),
-    do: connect(connections, key(peer.address, peer.port), handler)
-
-  def connect(connections, key, handler) when is_binary(key),
-    do: :ets.insert(connections, {key, handler})
-
-  @spec disconnect(atom | :ets.tid(), map | binary) :: true
-  def disconnect(connections, peer = %{address: _, port: _, ssl_cert: _}),
-    do: disconnect(connections, key(peer.address, peer.port))
-
-  def disconnect(connections, key) when is_binary(key),
-    do: :ets.delete(connections, key)
-
-  @spec lookup_conn(atom | :ets.tid(), binary()) :: [tuple]
-  def lookup_conn(connections, key),
-    do: :ets.lookup(connections, key)
-
-  def lookup_conn(connections, host, port),
-    do: :ets.lookup(connections, key(host, port))
-
-  defp lookup_and_send(connections, to_host, to_port, family, message, key) do
-    with {:ok, to_ip} <- resolve_name(to_host, family) do
-      case lookup_conn(connections, to_ip, to_port) do
-        [{_key, handler}] when is_pid(handler) ->
-          send(handler, {:send_message, message})
-
-        [] ->
-          nil
-          # DynamicSupervisor.start_child(state[:clients], )
-      end
-    else
-      error ->
-        Logger.error("problem sending message #{inspect(key)}, reason: #{inspect(error)}")
-    end
-  end
-
-  @impl GenServer
-  def handle_continue(options, nil) do
     children = [
       {
         Bandit,
-        plug: Spigot.Transport.WS.Plug,
+        plug: {Spigot.Transports.WS.Plug, user_agent: options[:user_agent]},
         scheme: options[:scheme],
         ip: options[:ip],
-        port: options[:port],
-        websocket_options: options[:websocket_options]
+        port: options[:port]
       }
     ]
 
-    with {:ok, _supervisor} <- Supervisor.start_link(children, strategy: :one_for_all),
-         :ok <- Sippet.register_transport(options[:name], :tcp, true) do
+    with {:ok, _supervisor} <- Supervisor.start_link(children, strategy: :one_for_all) do
       Logger.debug(
         "#{inspect(self())} started transport #{stringify_sockname(options[:ip], options[:port])}/ws"
       )
 
-      {:noreply, struct(__MODULE__, options)}
+      {:ok, struct(__MODULE__, options)}
     else
       error ->
-        Logger.error("could not start tcp socket, reason: #{inspect(error)}")
-        Process.sleep(5_000)
-        {:noreply, nil, {:continue, options}}
+       {:error, error}
     end
-  end
-
-  @impl GenServer
-  def handle_call(
-        {:send_message, %Message{start_line: %Request{}} = _message, _to_host, _to_port, _key},
-        _from,
-        state
-      ) do
-    # if the message is a request and we have no pid available for a given peer,
-    # we spawn a Client GenServer that spawns a socket in active mode for the
-    # transaction.
-
-    # lookup_conn(state[:connections], to_host, to_port)
-
-    {:reply, :ok, state}
-  end
-
-  @impl GenServer
-  def handle_call(
-        {:send_message, %Message{start_line: %Response{}} = message, to_host, to_port, key},
-        _from,
-        state
-      ) do
-    # if the message is a request and we have no pid available for a given peer,
-    # we spawn a Client GenServer that spawns a socket in active mode for the
-    # transaction.
-    lookup_and_send(state[:connections], to_host, to_port, state[:family], message, key)
-
-    {:reply, :ok, state}
-  end
-
-  @impl true
-  def terminate(_reason, state) do
-    :ets.delete(state[:connections])
-
-    {:ok, state}
   end
 
   def resolve_name(host, family) do

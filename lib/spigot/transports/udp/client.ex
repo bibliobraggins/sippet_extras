@@ -1,4 +1,4 @@
-defmodule Spigot.Transport.UDP do
+defmodule Spigot.Transports.UDP.Client do
   # @behaviour Spigot.Client
 
   alias Sippet.Message, as: MSG
