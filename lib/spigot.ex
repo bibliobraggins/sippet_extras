@@ -23,10 +23,12 @@ defmodule Spigot do
           proxy: binary() | SIPURI.t()
         ]
 
-  @type ws_options :: [
-          enabled: boolean(),
-          plug: Plug.t()
-        ]
+  @type websocket_options :: [
+    enabled: boolean(),
+    max_frame_size: pos_integer(),
+    validate_text_frames: boolean(),
+    compress: boolean()
+  ]
 
   @type options :: [
           user_agent: module() | {module(), keyword()},
@@ -38,6 +40,15 @@ defmodule Spigot do
           otp_app: binary() | atom(),
           cipher_suite: :string | :compatible
         ]
+
+  @doc """
+  @main_keys ~w(transport port ip keyfile certfile otp_app cipher_suite websocket_plug thousand_island_options sip_options)a
+  @sip_keys ~w(max_request_line_length max_header_length max_header_count max_requests compress deflate_options)a
+  @websocket_keys ~w(enabled max_frame_size validate_text_frames compress)a
+  @thousand_island_keys ThousandIsland.ServerConfig.__struct__()
+                        |> Map.from_struct()
+                        |> Map.keys()
+  """
 
   @spec start_link(nil | maybe_improper_list | map) :: :ignore | {:error, any} | {:ok, pid}
   def start_link(options) do

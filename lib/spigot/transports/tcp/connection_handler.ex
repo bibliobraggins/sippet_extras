@@ -39,11 +39,8 @@ defmodule Spigot.Transports.TCP.ConnectionHandler do
   def handle_close(_socket, state), do: {:shutdown, state}
 
   @impl ThousandIsland.Handler
-  def handle_shutdown(_socket, _state) do
-    :ok
-  end
+  def handle_shutdown(_socket, _state), do: :ok
 
-  def stringify_hostport(host, port) when is_tuple(host) do
-    "#{host |> :inet.ntoa() |> to_string()}:#{port}"
-  end
+  def stringify_hostport(host, port) when is_tuple(host),
+    do: "#{host |> :inet.ntoa() |> to_string()}:#{port}"
 end

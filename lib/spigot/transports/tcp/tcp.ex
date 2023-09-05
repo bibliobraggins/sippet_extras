@@ -35,13 +35,7 @@ defmodule Spigot.Transports.TCP do
           raise ArgumentError, "a sippet must be provided to use this transport"
       end
 
-    port =
-      case Keyword.fetch(options, :port) do
-        {:ok, port} when is_integer(port) and port > 0 and port < 65536 ->
-          port
-        _ ->
-          5060
-      end
+    port = Keyword.get(options, :port, 5060)
 
     {address, family} =
       case Keyword.fetch(options, :address) do
@@ -92,9 +86,7 @@ defmodule Spigot.Transports.TCP do
       }
     ]
 
-    with {:ok, _pid} <- Supervisor.start_link(children, strategy: :one_for_one)
-          #:ok <- Sippet.register_transport(options[:user_agent], :tcp, true)
-        do
+    with {:ok, _pid} <- Supervisor.start_link(children, strategy: :one_for_one) do
       Logger.debug(
         "#{inspect(self())} started transport #{stringify_sockname(options[:ip], options[:port])}/tcp"
       )
