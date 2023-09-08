@@ -18,7 +18,8 @@ defmodule Spigot.Connections do
   def delete(table),
     do: :ets.delete(table)
 
-  @spec resolve_name(binary, :inet | :inet6 | :local) :: {:error, :eafnosupport | :einval | :nxdomain} | {:ok, :inet.ip_address()}
+  @spec resolve_name(binary, :inet | :inet6 | :local) ::
+          {:error, :eafnosupport | :einval | :nxdomain} | {:ok, :inet.ip_address()}
   def resolve_name(host, family) do
     host
     |> String.to_charlist()

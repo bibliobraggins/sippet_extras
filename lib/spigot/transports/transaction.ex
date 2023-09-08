@@ -15,33 +15,47 @@ defmodule Spigot.Transaction do
     request as it passes it on to the next Agent.
   """
 
-  @type conn() :: term()
+  @type t :: %__MODULE__{
+          request: Types.request(),
+          provisional: [Types.response()],
+          final: Types.response(),
+          manipulations: keyword(),
+          origin: atom() | term()
+        }
+
+  @enforce_keys [
+    :request
+  ]
+
+  defstruct @enforce_keys ++
+              [
+                :provisional,
+                :final,
+                :manipulations,
+                :origin
+              ]
+
+  @type transform :: function()
+
+  @type transaction() :: t()
 
   @callback request(
               method :: String.t() | atom(),
               Types.headers(),
               body :: binary() | nil
-            ) :: {:ok, conn(), Types.message_ref()} | {:error, term()}
+            ) :: {:ok, transaction(), Types.message_ref()} | {:error, term()}
 
-  @callback open?(conn(), :read | :write | :read_write) :: boolean()
+  @callback open?(transaction(), :read | :write | :read_write) :: boolean()
 
-  @callback recv(conn(), bytes_size :: non_neg_integer(), timeout()) ::
-              {:ok, conn(), [Types.response()]}
-              | {:error, reason :: binary() | atom(), conn(), [Types.response()]}
+  @callback recv(transaction(), bytes_size :: non_neg_integer(), timeout()) ::
+              {:ok, transaction(), [Types.response()]}
+              | {:error, reason :: binary() | atom(), transaction(), [Types.response()]}
 
-  @callback close(conn()) :: {:ok, conn()}
+  @callback close(transaction()) :: {:ok, transaction()}
 
-  @callback controlling_process(conn(), pid()) :: {:ok, conn()} | {:error, term()}
+  @callback controlling_process(transaction(), pid()) :: {:ok, transaction()} | {:error, term()}
 
   # -- # -- # -- #
-
-  @type transform :: function()
-
-  @type t :: %__MODULE__{
-          request: Types.request(),
-          provisional: [Types.response() | nil],
-          final: Types.response() | nil
-        }
 
   @spec new(Sippet.Message.t()) :: t()
   def new(%SIP{start_line: %Request{}} = request), do: struct(__MODULE__, request: request)
@@ -59,15 +73,4 @@ defmodule Spigot.Transaction do
 
   defp put_provisional(provisionals, response) when is_list(provisionals),
     do: List.insert_at(provisionals, length(provisionals), response)
-
-  @enforce_keys [
-    :request
-  ]
-
-  defstruct @enforce_keys ++
-              [
-                :header_transforms,
-                :provisional,
-                :final
-              ]
 end

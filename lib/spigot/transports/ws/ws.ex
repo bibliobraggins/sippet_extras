@@ -181,7 +181,7 @@ defmodule Spigot.Transports.WS do
       {:ok, struct(__MODULE__, options)}
     else
       error ->
-       {:error, error}
+        {:error, error}
     end
   end
 

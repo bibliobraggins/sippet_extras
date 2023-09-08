@@ -1,6 +1,8 @@
 defmodule Spigot.Transports.TCP.ConnectionHandler do
   use ThousandIsland.Handler
 
+  alias Spigot.{Transaction}
+  alias ThousandIsland.Socket
   alias ThousandIsland
 
   require Logger
@@ -20,8 +22,16 @@ defmodule Spigot.Transports.TCP.ConnectionHandler do
   def handle_data(@exit_code, _socket, state), do: {:close, state}
 
   @impl ThousandIsland.Handler
-  def handle_data(data, _socket, state) do
-    Logger.debug("Received:\n#{inspect(Sippet.Message.parse!(data) |> to_string())}")
+  def handle_data(data, socket, state) do
+    case Sippet.Message.parse(data) do
+      {:ok, request} ->
+        apply(state[:user_agent], request.start_line.method, [
+          %Transaction{request: request, origin: Socket.peer_info(socket)}
+        ])
+
+      {:error, reason} ->
+        Logger.error(inspect(reason))
+    end
 
     {:continue, state}
   end

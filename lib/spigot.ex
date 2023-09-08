@@ -31,11 +31,11 @@ defmodule Spigot do
         ]
 
   @type websocket_options :: [
-    enabled: boolean(),
-    max_frame_size: pos_integer(),
-    validate_text_frames: boolean(),
-    compress: boolean()
-  ]
+          enabled: boolean(),
+          max_frame_size: pos_integer(),
+          validate_text_frames: boolean(),
+          compress: boolean()
+        ]
 
   @type options :: [
           user_agent: module() | {module(), keyword()},
@@ -62,26 +62,38 @@ defmodule Spigot do
 
     transport_module =
       case options[:transport] do
-        :udp -> Sippet.Transports.UDP
-        :tcp -> Spigot.Transports.TCP
-        :tls -> Spigot.Transports.TCP
-        :ws -> Spigot.Transports.WS
-        :wss -> Spigot.Transports.WS
+        :udp ->
+          Sippet.Transports.UDP
+
+        :tcp ->
+          Spigot.Transports.TCP
+
+        :tls ->
+          Spigot.Transports.TCP
+
+        :ws ->
+          Spigot.Transports.WS
+
+        :wss ->
+          Spigot.Transports.WS
+
         _ ->
           raise "must provide a supported transport options"
       end
 
     Supervisor.start_link(
-      __MODULE__, {
+      __MODULE__,
+      {
         transport_module,
         Keyword.merge([user_agent: user_agent], options)
-      })
+      }
+    )
   end
 
   @impl true
   def init(transport) do
     children = [
-      transport,
+      transport
       # {user_agent, options}
     ]
 

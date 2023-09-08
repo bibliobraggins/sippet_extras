@@ -194,5 +194,4 @@ defmodule Spigot.Transports.TCP.Client do
 
     "#{address}:#{port}"
   end
-
 end

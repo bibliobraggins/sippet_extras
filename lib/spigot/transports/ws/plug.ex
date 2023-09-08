@@ -11,6 +11,7 @@ defmodule Spigot.Transports.WS.Plug do
   def call(%{request_path: "/", method: "GET"} = conn, options) do
     if Plug.Conn.get_req_header(conn, "sec-websocket-protocol") == ["sip"] do
       conn = Plug.Conn.put_resp_header(conn, "sec-websocket-protocol", "sip")
+
       WebSockAdapter.upgrade(
         conn,
         Spigot.Transports.WS.Server,

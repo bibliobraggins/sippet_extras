@@ -6,12 +6,13 @@ defmodule Spigot.Transports.UDP.Client do
   # @impl true
   def init(ip, port, opts) do
     family = Keyword.get(opts, :family, :inet)
-    active = Keyword.get(opts, :active, :true)
+    active = Keyword.get(opts, :active, true)
     opts = Keyword.merge([family: family, active: active, ip: ip], opts)
 
     case :gen_udp.open(port, [:binary, {:active, opts[:active]}, {:ip, opts[:ip]}, opts[:family]]) do
       {:ok, socket} ->
         {:ok, socket}
+
       reason ->
         {:error, reason}
     end
@@ -31,5 +32,4 @@ defmodule Spigot.Transports.UDP.Client do
 
   defp wrap_err({:error, reason}), do: {:error, inspect(reason)}
   defp wrap_err(other), do: other
-
 end

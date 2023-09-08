@@ -1,5 +1,5 @@
 defmodule Spigot.UserAgent do
-  #alias Sippet.Message, as: MSG
+  # alias Sippet.Message, as: MSG
   alias Sippet.Message
   alias Spigot.Types
 
@@ -16,22 +16,34 @@ defmodule Spigot.UserAgent do
              end
            )
 
-  defmacro __using__(_options) do
+  defp uac(_) do
+    quote do
+      @impl Spigot.UserAgent
+      def handle_request(request),
+        do: raise("Please define a request handler in #{__MODULE__}")
+    end
+  end
+
+  defp uas(_) do
+    quote do
+      @impl Spigot.UserAgent
+      def handle_response(response),
+        do: raise("Please define a response handler in #{__MODULE__}")
+    end
+  end
+
+  defmacro __using__(_) do
     quote do
       @behaviour Spigot.UserAgent
       import Spigot.UserAgent
 
       @methods unquote(@methods)
 
-      @impl Spigot.UserAgent
-      def handle_request(request) do
-        raise "Please define a request handler in #{__MODULE__}"
-      end
-
-      @impl Spigot.UserAgent
-      def handle_response(response) do
-        raise "Please define a response handler in #{__MODULE__}"
-      end
+      [
+        unquote(uac([])),
+        unquote(uas([]))
+      ]
+      |> Code.eval_quoted()
     end
   end
 end

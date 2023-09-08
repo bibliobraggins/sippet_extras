@@ -64,7 +64,7 @@ defmodule Spigot.Transports.TCP do
                 ":address contains an invalid IP or DNS name, got: #{inspect(reason)}"
       end
 
-      GenServer.start_link(__MODULE__,
+    GenServer.start_link(__MODULE__,
       user_agent: user_agent,
       ip: ip,
       port: port,
@@ -81,7 +81,7 @@ defmodule Spigot.Transports.TCP do
         transport_options: [ip: options[:ip]],
         handler_module: Spigot.Transports.TCP.ConnectionHandler,
         handler_options: [
-          user_agent: options[:user_agent],
+          user_agent: options[:user_agent]
         ]
       }
     ]
@@ -112,5 +112,4 @@ defmodule Spigot.Transports.TCP do
 
     "#{address}:#{port}"
   end
-
 end
