@@ -4,7 +4,6 @@ defmodule Demo do
   use Spigot.UserAgent
 
   def register(transaction) do
-    transaction
-    |> Logger.info()
+    Logger.debug(transaction.request |> to_string())
   end
 end

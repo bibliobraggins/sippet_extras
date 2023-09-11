@@ -19,10 +19,18 @@ defmodule Spigot.Transports.TCP do
     }
   end
 
+  @thousand_island_keys ThousandIsland.ServerConfig.__struct__()
+                        |> Map.from_struct()
+                        |> Map.keys()
+
   @doc """
   Starts the TCP transport.
   """
   def start_link(options) when is_list(options) do
+    thousand_island_options =
+      Keyword.get(options, :thousand_island_options, [])
+      |> validate_options(@thousand_island_keys, :thousand_island_options)
+
     user_agent =
       case Keyword.fetch(options, :user_agent) do
         {:ok, user_agent} when is_atom(user_agent) ->
@@ -35,40 +43,10 @@ defmodule Spigot.Transports.TCP do
           raise ArgumentError, "a sippet must be provided to use this transport"
       end
 
-    port = Keyword.get(options, :port, 5060)
-
-    {address, family} =
-      case Keyword.fetch(options, :address) do
-        {:ok, {address, family}} when family in [:inet, :inet6] and is_binary(address) ->
-          {address, family}
-
-        {:ok, address} when is_binary(address) ->
-          {address, :inet}
-
-        {:ok, other} ->
-          raise ArgumentError,
-                "expected :address to be an address or {address, family} tuple, got: " <>
-                  "#{inspect(other)}"
-
-        :error ->
-          {"0.0.0.0", :inet}
-      end
-
-    ip =
-      case resolve_name(address, family) do
-        {:ok, ip} ->
-          ip
-
-        {:error, reason} ->
-          raise ArgumentError,
-                ":address contains an invalid IP or DNS name, got: #{inspect(reason)}"
-      end
-
     GenServer.start_link(__MODULE__,
       user_agent: user_agent,
-      ip: ip,
-      port: port,
-      family: family
+      transport_options: options[:transport_options],
+      thousand_island_options: thousand_island_options
     )
   end
 
@@ -78,8 +56,9 @@ defmodule Spigot.Transports.TCP do
       {
         ThousandIsland,
         port: options[:port],
-        transport_options: [ip: options[:ip]],
         handler_module: Spigot.Transports.TCP.ConnectionHandler,
+        transport_module: options[:transport_module],
+        transport_options: options[:transport_options] ++ [reuseaddr: true],
         handler_options: [
           user_agent: options[:user_agent]
         ]
@@ -111,5 +90,15 @@ defmodule Spigot.Transports.TCP do
       |> to_string()
 
     "#{address}:#{port}"
+  end
+
+  defp validate_options(options, valid_values, name) do
+    case Keyword.split(options, valid_values) do
+      {options, []} ->
+        options
+
+      {_, illegal_options} ->
+        raise "Unsupported keys(s) in #{name} config: #{inspect(Keyword.keys(illegal_options))}"
+    end
   end
 end

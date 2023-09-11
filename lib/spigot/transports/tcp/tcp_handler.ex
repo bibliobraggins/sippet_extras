@@ -1,4 +1,4 @@
-defmodule Spigot.Transports.TCP.ConnectionHandler do
+defmodule Spigot.Transports.TCP.Handler do
   use ThousandIsland.Handler
 
   alias Spigot.{Transaction}
@@ -9,8 +9,9 @@ defmodule Spigot.Transports.TCP.ConnectionHandler do
 
   @impl ThousandIsland.Handler
   def handle_connection(_socket, state) do
-    reference = :erlang.make_ref()
-    {:continue, Keyword.put(state, :reference, reference)}
+    state = state
+
+    {:continue, state}
   end
 
   @keepalive <<13, 10, 13, 10>>
