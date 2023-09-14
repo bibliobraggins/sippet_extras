@@ -1,5 +1,4 @@
 defmodule Spigot do
-  use Supervisor
 
   alias Spigot.Types
 
@@ -48,55 +47,13 @@ defmodule Spigot do
           cipher_suite: :string | :compatible
         ]
 
-  @spec start_link(nil | maybe_improper_list | map) :: :ignore | {:error, any} | {:ok, pid}
-  def start_link(options) do
-    user_agent =
-      case Code.ensure_loaded(options[:user_agent]) do
-        {:module, module} when is_atom(module) ->
-          module
-
-        reason ->
-          raise ArgumentError,
-                "a valid module was not provided as a UserAgent, error: #{inspect(reason)}"
-      end
-
-    transport_module =
-      case options[:transport] do
-        :udp ->
-          Sippet.Transports.UDP
-
-        :tcp ->
-          Spigot.Transports.TCP
-
-        :tls ->
-          Spigot.Transports.TCP
-
-        :ws ->
-          Spigot.Transports.WS
-
-        :wss ->
-          Spigot.Transports.WS
-
-        _ ->
-          raise "must provide a supported transport options"
-      end
-
-    Supervisor.start_link(
-      __MODULE__,
-      {
-        transport_module,
-        Keyword.merge([user_agent: user_agent], options)
-      }
-    )
-  end
-
-  @impl true
-  def init(transport) do
-    children = [
-      transport
-      # {user_agent, options}
-    ]
-
-    Supervisor.init(children, strategy: :one_for_one)
+  def start(user_agent, options) do
+    case Code.ensure_loaded(user_agent) do
+      {:module, user_agent} when is_atom(user_agent) ->
+        user_agent.start_link(options)
+      reason ->
+        raise ArgumentError,
+              "a valid module was not provided as a UserAgent, error: #{inspect(reason)}"
+    end
   end
 end
