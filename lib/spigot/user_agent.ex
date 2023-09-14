@@ -18,7 +18,7 @@ defmodule Spigot.UserAgent do
 
   defmacro __using__(_) do
     @methods |> inspect()
-    quote do
+    quote location: :keep do
       @behaviour Spigot.UserAgent
       import Spigot.UserAgent
 
@@ -30,7 +30,7 @@ defmodule Spigot.UserAgent do
         transport_module =
           case Keyword.fetch!(options, :transport) do
             :udp ->
-              Sippet.Transports.UDP
+              Spigot.Transports.UDP
 
             :tcp ->
               Spigot.Transports.TCP
@@ -57,31 +57,33 @@ defmodule Spigot.UserAgent do
         |> Keyword.put_new(:transport_module, transport_module)
         |> Keyword.put_new(:transport_options, transport_options)
 
-        Supervisor.start_link(__MODULE__, options)
+        GenServer.start_link(__MODULE__, options, name: __MODULE__)
       end
 
       @impl true
       def init(options) do
 
         children = [
-          {options[:transport_module], options[:transport_options]},
           {Registry, name: __MODULE__.ClientRegistry, keys: :unique, partitions: System.schedulers_online()},
           {DynamicSupervisor, strategy: :one_for_one, name: __MODULE__.ClientSupervisor}
         ]
 
-        with {:ok, ua_sup} <- Supervisor.init(children, strategy: :one_for_one) do
+        with {:ok, transport_pid} <- options[:transport_module].start_link(options[:transport_options]),
+              {:ok, ua_sup} <- Supervisor.init(children, strategy: :one_for_one) do
 
           unless is_nil(options[:clients]) do
             Enum.into(options[:clients], [], fn {method, opts} -> {__MODULE__, method, opts} end)
             |> Logger.debug()
           end
 
-          {:ok, ua_sup}
+          {:ok, Keyword.put_new(options, :transport, transport_pid)}
         else
           reason ->
-            IO.inspect reason
+            IO.inspect(reason)
         end
       end
+
+      def send_msg(msg), do: GenServer.cast(__MODULE__, {:send_msg, msg})
 
       def start_client(method, options),
         do: Spigot.UserAgent.Client.start_link({__MODULE__, method, options})

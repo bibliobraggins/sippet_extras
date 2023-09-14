@@ -68,6 +68,8 @@ defmodule Spigot.Transports.TCP do
                 ":address contains an invalid IP or DNS name, got: #{inspect(reason)}"
       end
 
+    sockname = :"#{(:inet.ntoa(ip))}:#{port}/tcp"
+
     transport_options =
       Keyword.get(options, :transport_options, [])
       |> Keyword.put_new(:ip, ip)
@@ -78,8 +80,9 @@ defmodule Spigot.Transports.TCP do
       |> Keyword.put_new(:user_agent, user_agent)
       |> Keyword.put_new(:transport_options, transport_options)
       |> Keyword.put_new(:port, port)
+      |> Keyword.put_new(:sockname, sockname)
 
-    GenServer.start_link(__MODULE__, options)
+    GenServer.start_link(__MODULE__, options, name: sockname)
   end
 
   @impl true
@@ -93,14 +96,11 @@ defmodule Spigot.Transports.TCP do
     ) do
       {:ok, pid} ->
         Logger.debug(
-          "#{inspect(self())} started transport " <>
-            "#{inspect(options[:transport_options][:ip])}:#{options[:port]}/tcp"
+          "#{inspect(self())} started transport " <> options[:sockname]
         )
         {:ok, pid}
       {:error, reason} ->
-        Logger.error(
-          "#{inspect(self())} port #{options[:port]}/tcp :: #{inspect(reason)}"
-        )
+        {:error, reason}
     end
   end
 
@@ -108,15 +108,6 @@ defmodule Spigot.Transports.TCP do
     host
     |> String.to_charlist()
     |> :inet.getaddr(family)
-  end
-
-  def stringify_sockname(ip, port) do
-    address =
-      ip
-      |> :inet_parse.ntoa()
-      |> to_string()
-
-    "#{address}:#{port}"
   end
 
 end
