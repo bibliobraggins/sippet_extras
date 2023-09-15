@@ -113,7 +113,14 @@ defmodule Spigot.Transports.TCP.Client do
     case :gen_tcp.connect(
            addr,
            port,
-           [:binary, {:active, true}, {:packet, :raw}, {:port, options[:port]}, {:ip, options[:ip]}, options[:family]],
+           [
+             :binary,
+             {:active, true},
+             {:packet, :raw},
+             {:port, options[:port]},
+             {:ip, options[:ip]},
+             options[:family]
+           ],
            options[:timeout]
          ) do
       {:ok, socket} ->

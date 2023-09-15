@@ -20,7 +20,11 @@ defmodule Spigot.UserAgent.Client do
   require Logger
 
   def start_link({user_agent, method, options}) do
-    GenServer.start_link(__MODULE__, {user_agent, method, options[:client_options]}, options[:genserver_options])
+    GenServer.start_link(
+      __MODULE__,
+      {user_agent, method, options[:client_options]},
+      options[:genserver_options]
+    )
   end
 
   @impl true

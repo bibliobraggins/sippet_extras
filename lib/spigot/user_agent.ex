@@ -18,6 +18,7 @@ defmodule Spigot.UserAgent do
 
   defmacro __using__(_) do
     @methods |> inspect()
+
     quote location: :keep do
       @behaviour Spigot.UserAgent
       import Spigot.UserAgent
@@ -48,29 +49,29 @@ defmodule Spigot.UserAgent do
               raise "must provide a supported transport"
           end
 
-      transport_options =
-        Keyword.get(options, :transport_options, [])
-        |> Keyword.put_new(:user_agent, __MODULE__)
+        transport_options =
+          Keyword.get(options, :transport_options, [])
+          |> Keyword.put_new(:user_agent, __MODULE__)
 
-      options =
-        Keyword.delete(options, :transport)
-        |> Keyword.put_new(:transport_module, transport_module)
-        |> Keyword.put_new(:transport_options, transport_options)
+        options =
+          Keyword.delete(options, :transport)
+          |> Keyword.put_new(:transport_module, transport_module)
+          |> Keyword.put_new(:transport_options, transport_options)
 
         GenServer.start_link(__MODULE__, options, name: __MODULE__)
       end
 
       @impl true
       def init(options) do
-
         children = [
-          {Registry, name: __MODULE__.ClientRegistry, keys: :unique, partitions: System.schedulers_online()},
+          {Registry,
+           name: __MODULE__.ClientRegistry, keys: :unique, partitions: System.schedulers_online()},
           {DynamicSupervisor, strategy: :one_for_one, name: __MODULE__.ClientSupervisor}
         ]
 
-        with {:ok, transport_pid} <- options[:transport_module].start_link(options[:transport_options]),
-              {:ok, ua_sup} <- Supervisor.init(children, strategy: :one_for_one) do
-
+        with {:ok, transport_pid} <-
+               options[:transport_module].start_link(options[:transport_options]),
+             {:ok, ua_sup} <- Supervisor.init(children, strategy: :one_for_one) do
           unless is_nil(options[:clients]) do
             Enum.into(options[:clients], [], fn {method, opts} -> {__MODULE__, method, opts} end)
             |> Logger.debug()
@@ -95,7 +96,6 @@ defmodule Spigot.UserAgent do
       @impl Spigot.UserAgent
       def handle_response(response),
         do: raise("Please define a response handler in #{__MODULE__}")
-
     end
   end
 end

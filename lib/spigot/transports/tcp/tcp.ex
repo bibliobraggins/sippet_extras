@@ -27,6 +27,7 @@ defmodule Spigot.Transports.TCP do
       case Keyword.fetch(options, :user_agent) do
         {:ok, user_agent} when is_atom(user_agent) ->
           user_agent
+
         _ ->
           raise ArgumentError, "a UserAgent module must be provided to use this transport"
       end
@@ -35,6 +36,7 @@ defmodule Spigot.Transports.TCP do
       case options[:scheme] do
         :sips ->
           ThousandIsland.Transports.SSL
+
         _ ->
           ThousandIsland.Transports.TCP
       end
@@ -68,7 +70,7 @@ defmodule Spigot.Transports.TCP do
                 ":address contains an invalid IP or DNS name, got: #{inspect(reason)}"
       end
 
-    sockname = :"#{(:inet.ntoa(ip))}:#{port}/tcp"
+    sockname = :"#{:inet.ntoa(ip)}:#{port}/tcp"
 
     transport_options =
       Keyword.get(options, :transport_options, [])
@@ -88,17 +90,16 @@ defmodule Spigot.Transports.TCP do
   @impl true
   def init(options) do
     case ThousandIsland.start_link(
-      port: options[:port],
-      handler_module: Spigot.Transports.TCP.Handler,
-      transport_module: options[:transport_module],
-      transport_options: options[:transport_options],
-      handler_options: [user_agent: options[:user_agent]]
-    ) do
+           port: options[:port],
+           handler_module: Spigot.Transports.TCP.Handler,
+           transport_module: options[:transport_module],
+           transport_options: options[:transport_options],
+           handler_options: [user_agent: options[:user_agent]]
+         ) do
       {:ok, pid} ->
-        Logger.debug(
-          "#{inspect(self())} started transport " <> options[:sockname]
-        )
+        Logger.debug("#{inspect(self())} started transport " <> options[:sockname])
         {:ok, pid}
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -109,5 +110,4 @@ defmodule Spigot.Transports.TCP do
     |> String.to_charlist()
     |> :inet.getaddr(family)
   end
-
 end

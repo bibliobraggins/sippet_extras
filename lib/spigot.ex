@@ -1,5 +1,4 @@
 defmodule Spigot do
-
   alias Spigot.Types
 
   alias Sippet.URI, as: SIPURI
@@ -51,6 +50,7 @@ defmodule Spigot do
     case Code.ensure_loaded(user_agent) do
       {:module, user_agent} when is_atom(user_agent) ->
         user_agent.start_link(options)
+
       reason ->
         raise ArgumentError,
               "a valid module was not provided as a UserAgent, error: #{inspect(reason)}"
