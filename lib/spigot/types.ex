@@ -11,6 +11,7 @@ defmodule Spigot.Types do
   a term representing an internet address
   """
   @type address() :: :inet.socket_address() | String.t()
+  @type family() :: :inet | :inet6
   @typedoc """
   a reference to make each transaction globally unique, be it initiated by us or a peer
   """

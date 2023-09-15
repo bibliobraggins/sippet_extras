@@ -3,111 +3,65 @@ defmodule Spigot.Transports.TCP do
   Implements a TCP transport via ThousandIsland
   """
 
+  @behaviour Spigot.Transport
+  import Spigot.Transport
+
   require Logger
 
-  use GenServer
 
   # alias Sippet.Message, as: Message
   # alias Message.RequestLine, as: Request
   # alias Message.StatusLine, as: Response
 
   @doc false
-  def child_spec(options) do
-    %{
-      id: __MODULE__,
-      start: {__MODULE__, :start_link, [options]}
-    }
+  @impl true
+  def build_options(opts) do
+    opts =
+      opts
+      |> Keyword.put_new(:reuseport, true)
+
+    {__MODULE__, opts}
   end
 
   @doc """
   Starts the TCP transport.
   """
-  def start_link(options) when is_list(options) do
-    user_agent =
-      case Keyword.fetch(options, :user_agent) do
-        {:ok, user_agent} when is_atom(user_agent) ->
-          user_agent
-
-        _ ->
-          raise ArgumentError, "a UserAgent module must be provided to use this transport"
-      end
-
-    transport_module =
-      case options[:scheme] do
-        :sips ->
-          ThousandIsland.Transports.SSL
-
-        _ ->
-          ThousandIsland.Transports.TCP
-      end
-
-    port = Keyword.get(options, :port, 5060)
-
-    {address, family} =
-      case Keyword.fetch(options, :address) do
-        {:ok, {address, family}} when family in [:inet, :inet6] and is_binary(address) ->
-          {address, family}
-
-        {:ok, address} when is_binary(address) ->
-          {address, :inet}
-
-        {:ok, other} ->
-          raise ArgumentError,
-                "expected :address to be an address or {address, family} tuple, got: " <>
-                  "#{inspect(other)}"
-
-        :error ->
-          {"0.0.0.0", :inet}
-      end
-
-    ip =
-      case resolve_name(address, family) do
-        {:ok, ip} when is_tuple(ip) ->
-          ip
-
-        {:error, reason} ->
-          raise ArgumentError,
-                ":address contains an invalid IP or DNS name, got: #{inspect(reason)}"
-      end
-
-    sockname = :"#{:inet.ntoa(ip)}:#{port}/tcp"
-
-    transport_options =
-      Keyword.get(options, :transport_options, [])
-      |> Keyword.put_new(:ip, ip)
-      |> Keyword.put_new(:reuseaddr, true)
-
-    options =
-      Keyword.put_new(options, :transport_module, transport_module)
-      |> Keyword.put_new(:user_agent, user_agent)
-      |> Keyword.put_new(:transport_options, transport_options)
-      |> Keyword.put_new(:port, port)
-      |> Keyword.put_new(:sockname, sockname)
-
-    GenServer.start_link(__MODULE__, options, name: sockname)
-  end
-
   @impl true
-  def init(options) do
+  def listen(opts) do
     case ThousandIsland.start_link(
-           port: options[:port],
+           port: opts[:port],
            handler_module: Spigot.Transports.TCP.Handler,
-           transport_module: options[:transport_module],
-           transport_options: options[:transport_options],
-           handler_options: [user_agent: options[:user_agent]]
+           transport_module: opts[:transport_module],
+           transport_options: opts[:transport_options],
+           handler_options: [user_agent: opts[:user_agent]]
          ) do
       {:ok, pid} ->
-        Logger.debug("#{inspect(self())} started transport " <> options[:sockname])
-        {:ok, pid}
+        Logger.debug("#{inspect(self())} started transport " <> opts[:sockname])
+        {:ok, Keyword.put_new(opts, :socket, pid)}
 
       {:error, reason} ->
         {:error, reason}
     end
   end
 
-  def resolve_name(host, family) do
-    host
-    |> String.to_charlist()
-    |> :inet.getaddr(family)
+  @impl true
+  def connect(to_host, to_port, opts) do
+    family = get_family(to_host)
+      with {:ok, to_ip} <- resolve_name(to_host, family) do
+        :gen_tcp.connect(to_ip, to_port, opts)
+      else
+        error ->
+          error
+      end
   end
+
+
+  @impl true
+  def send_message(message, pid, _opts) do
+    send({:send_message, message}, pid)
+  end
+
+  @impl true
+  def close(pid, timeout \\ 15000), do: ThousandIsland.stop(pid, timeout)
+
 end

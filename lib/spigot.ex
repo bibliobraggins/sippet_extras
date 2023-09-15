@@ -45,15 +45,4 @@ defmodule Spigot do
           otp_app: binary() | atom(),
           cipher_suite: :string | :compatible
         ]
-
-  def start(user_agent, options) do
-    case Code.ensure_loaded(user_agent) do
-      {:module, user_agent} when is_atom(user_agent) ->
-        user_agent.start_link(options)
-
-      reason ->
-        raise ArgumentError,
-              "a valid module was not provided as a UserAgent, error: #{inspect(reason)}"
-    end
-  end
 end

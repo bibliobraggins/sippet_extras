@@ -28,36 +28,6 @@ defmodule Spigot.UserAgent do
       def start_link(options) when is_list(options) do
         user_agent = __MODULE__
 
-        transport_module =
-          case Keyword.fetch!(options, :transport) do
-            :udp ->
-              Spigot.Transports.UDP
-
-            :tcp ->
-              Spigot.Transports.TCP
-
-            :tls ->
-              Spigot.Transports.TCP
-
-            :ws ->
-              Spigot.Transports.WS
-
-            :wss ->
-              Spigot.Transports.WS
-
-            _ ->
-              raise "must provide a supported transport"
-          end
-
-        transport_options =
-          Keyword.get(options, :transport_options, [])
-          |> Keyword.put_new(:user_agent, __MODULE__)
-
-        options =
-          Keyword.delete(options, :transport)
-          |> Keyword.put_new(:transport_module, transport_module)
-          |> Keyword.put_new(:transport_options, transport_options)
-
         GenServer.start_link(__MODULE__, options, name: __MODULE__)
       end
 

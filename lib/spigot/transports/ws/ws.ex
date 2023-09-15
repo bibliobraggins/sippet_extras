@@ -73,8 +73,6 @@ defmodule Spigot.Transports.WS do
 
   """
 
-  use GenServer
-
   @enforce_keys [
     :name,
     :ip,
@@ -86,117 +84,55 @@ defmodule Spigot.Transports.WS do
     :connections
   ]
 
+  @behaviour Spigot.Transport
+  import Spigot.{Transport}
+
   defstruct @enforce_keys
 
   require Logger
 
-  def start_link(options) do
-    user_agent =
-      case Keyword.fetch(options, :user_agent) do
-        {:ok, user_agent} when is_atom(user_agent) ->
-          user_agent
+  @impl Spigot.Transport
+  def build_options(opts) do
+    opts =
+      opts
+      |> Keyword.put_new(:plug, Spigot.Transports.WS.Plug)
+      |> Keyword.put_new(:scheme, :http)
 
-        {:ok, other} ->
-          raise ArgumentError, "expected :user_agent to be a module, got: #{inspect(other)}"
-
-        :error ->
-          raise ArgumentError, "expected :user_agent option to be present"
-      end
-
-    port =
-      case Keyword.fetch(options, :port) do
-        {:ok, port} when is_integer(port) and port > 0 and port < 65536 ->
-          port
-
-        {:ok, other} ->
-          raise ArgumentError,
-                "expected :port to be an integer between 1 and 65535, got: #{inspect(other)}"
-
-        :error ->
-          4000
-      end
-
-    {address, family} =
-      case Keyword.fetch(options, :address) do
-        {:ok, {address, family}} when family in [:inet, :inet6] and is_binary(address) ->
-          {address, family}
-
-        {:ok, address} when is_binary(address) ->
-          {address, :inet}
-
-        {:ok, other} ->
-          raise ArgumentError,
-                "expected :address to be an address or {address, family} tuple, got: " <>
-                  "#{inspect(other)}"
-
-        :error ->
-          {"0.0.0.0", :inet}
-      end
-
-    ip =
-      case resolve_name(address, family) do
-        {:ok, ip} ->
-          ip
-
-        {:error, reason} ->
-          raise ArgumentError,
-                ":address contains an invalid IP or DNS name, got: #{inspect(reason)}"
-      end
-
-    {scheme, _tls_options} =
-      with {:ok, tls_opts} when is_list(tls_opts) <- Keyword.fetch(options, :tls_options) do
-        ## get cipher, key, cert...
-        {:https, tls_opts}
-      else
-        _ ->
-          {:http, []}
-      end
-
-    GenServer.start_link(
-      __MODULE__,
-      user_agent: user_agent,
-      scheme: scheme,
-      ip: ip,
-      port: port
-    )
+    {__MODULE__, opts}
   end
 
-  @impl true
-  def init(options) do
-    children = [
+  @impl Spigot.Transport
+  def listen(opts) do
+    transport = [
       {
         Bandit,
-        plug: {Spigot.Transports.WS.Plug, user_agent: options[:user_agent]},
-        scheme: options[:scheme],
-        ip: options[:ip],
-        port: options[:port]
+        plug: {opts[:plug], user_agent: opts[:user_agent]},
+        scheme: opts[:scheme],
+        ip: opts[:ip],
+        port: opts[:port]
       }
     ]
 
-    with {:ok, _supervisor} <- Supervisor.start_link(children, strategy: :one_for_all) do
+    with {:ok, _supervisor} <- Supervisor.start_link(transport, strategy: :one_for_all) do
       Logger.debug(
-        "#{inspect(self())} started transport #{stringify_sockname(options[:ip], options[:port])}/ws"
+        "#{inspect(self())} started transport #{opts[:sockname]}"
       )
 
-      {:ok, struct(__MODULE__, options)}
+      {:ok, struct(__MODULE__, opts)}
     else
       error ->
         {:error, error}
     end
   end
 
-  def resolve_name(host, family) do
-    host
-    |> String.to_charlist()
-    |> :inet.getaddr(family)
+  @impl true
+  def send_message(message, pid, _opts) do
+    send({:send_message, message}, pid)
   end
 
-  def stringify_sockname(ip, port) do
-    address =
-      ip
-      |> :inet_parse.ntoa()
-      |> to_string()
-
-    "#{address}:#{port}"
+  @impl true
+  def close(pid) do
+    Process.exit(pid, :shutdown)
+    :ok
   end
 end
