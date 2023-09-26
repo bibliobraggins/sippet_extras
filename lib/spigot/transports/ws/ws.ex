@@ -85,7 +85,6 @@ defmodule Spigot.Transports.WS do
   ]
 
   @behaviour Spigot.Transport
-  import Spigot.{Transport}
 
   defstruct @enforce_keys
 
@@ -93,36 +92,28 @@ defmodule Spigot.Transports.WS do
 
   @impl Spigot.Transport
   def build_options(opts) do
+    port = Keyword.get(opts, :port, 4000)
+    plug = Keyword.get(opts, :plug, {Spigot.Transports.WS.Plug, user_agent: opts[:user_agent]})
+    scheme = Keyword.get(opts, :scheme, :http)
+
     opts =
       opts
-      |> Keyword.put_new(:plug, Spigot.Transports.WS.Plug)
-      |> Keyword.put_new(:scheme, :http)
+      |> Keyword.put_new(:port, port)
+      |> Keyword.put_new(:plug, plug)
+      |> Keyword.put_new(:scheme, scheme)
 
     {__MODULE__, opts}
   end
 
   @impl Spigot.Transport
   def listen(opts) do
-    transport = [
-      {
-        Bandit,
-        plug: {opts[:plug], user_agent: opts[:user_agent]},
-        scheme: opts[:scheme],
-        ip: opts[:ip],
-        port: opts[:port]
-      }
-    ]
 
-    with {:ok, _supervisor} <- Supervisor.start_link(transport, strategy: :one_for_all) do
-      Logger.debug(
-        "#{inspect(self())} started transport #{opts[:sockname]}"
-      )
-
-      {:ok, struct(__MODULE__, opts)}
-    else
-      error ->
-        {:error, error}
-    end
+    Bandit.start_link(
+      plug: opts[:plug],
+      scheme: opts[:scheme],
+      ip: opts[:ip],
+      port: opts[:port]
+    )
   end
 
   @impl true

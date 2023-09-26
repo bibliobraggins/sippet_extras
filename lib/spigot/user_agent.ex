@@ -23,49 +23,27 @@ defmodule Spigot.UserAgent do
       @behaviour Spigot.UserAgent
       import Spigot.UserAgent
 
-      use Supervisor
+      @moduledoc """
+        Think of UserAgent as a container of logic that pertains to your requests and responses
+        Spigot UserAgents do not construct or handle requests or responses directly.
 
-      def start_link(options) when is_list(options) do
-        user_agent = __MODULE__
-
-        GenServer.start_link(__MODULE__, options, name: __MODULE__)
-      end
-
-      @impl true
-      def init(options) do
-        children = [
-          {Registry,
-           name: __MODULE__.ClientRegistry, keys: :unique, partitions: System.schedulers_online()},
-          {DynamicSupervisor, strategy: :one_for_one, name: __MODULE__.ClientSupervisor}
-        ]
-
-        with {:ok, transport_pid} <-
-               options[:transport_module].start_link(options[:transport_options]),
-             {:ok, ua_sup} <- Supervisor.init(children, strategy: :one_for_one) do
-          unless is_nil(options[:clients]) do
-            Enum.into(options[:clients], [], fn {method, opts} -> {__MODULE__, method, opts} end)
-            |> Logger.debug()
-          end
-
-          {:ok, Keyword.put_new(options, :transport, transport_pid)}
-        else
-          reason ->
-            IO.inspect(reason)
-        end
-      end
-
-      def send_msg(msg), do: GenServer.cast(__MODULE__, {:send_msg, msg})
-
-      def start_client(method, options),
-        do: Spigot.UserAgent.Client.start_link({__MODULE__, method, options})
+        Instead, UserAgents are more something akin to a Plug or Plug Router.
+        It's main job is orchestrate a request or responses passage through a network interface.
+      """
 
       @impl Spigot.UserAgent
       def handle_request(request),
-        do: raise("Please define a request handler in #{__MODULE__}")
+        do: raise("No request handler in #{__MODULE__}")
 
       @impl Spigot.UserAgent
       def handle_response(response),
-        do: raise("Please define a response handler in #{__MODULE__}")
+        do: raise("No response handler in #{__MODULE__}")
+
+      # When a request comes in to a UserAgent, A process is spawned to construct the message
+      # and handle responses (or subsequent transactions) accordingly.
+      # the process is will be named according to it's URI, in a registry specific to the UserAgent scope
+      def start_client(method, options),
+        do: Spigot.UserAgent.Client.start_link({__MODULE__, method, options})
     end
   end
 end

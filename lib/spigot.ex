@@ -45,4 +45,9 @@ defmodule Spigot do
           otp_app: binary() | atom(),
           cipher_suite: :string | :compatible
         ]
+
+  def start_link(opts) do
+    Spigot.Transport.build_options(opts)
+    |> Spigot.Transport.start_link()
+  end
 end
