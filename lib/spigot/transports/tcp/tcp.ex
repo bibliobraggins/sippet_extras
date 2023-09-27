@@ -24,9 +24,9 @@ defmodule Spigot.Transports.TCP do
 
     opts =
       opts
-      |> Keyword.put_new(:port, port)
-      |> Keyword.put_new(:reuseport, true)
-      |> Keyword.put_new(:transport_options, transport_options)
+      |> Keyword.put(:port, port)
+      |> Keyword.put(:reuseport, true)
+      |> Keyword.put(:transport_options, transport_options)
 
     {__MODULE__, opts}
   end
@@ -35,7 +35,7 @@ defmodule Spigot.Transports.TCP do
   Starts the TCP transport.
   """
   @impl true
-  def listen(opts) do
+  def init(opts) do
     transport_module =
       case Keyword.fetch(opts, :transport) do
         {:ok, :tls} ->

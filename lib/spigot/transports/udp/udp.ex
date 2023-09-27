@@ -7,24 +7,32 @@ defmodule Spigot.Transports.UDP do
 
   require Logger
 
-  @impl Transport
+  @impl true
   def build_options(opts) do
     port = Keyword.get(opts, :port, 5060)
+    mtu = Keyword.get(opts, :mtu, 1500)
+    timeout = Keyword.get(opts, :io_timeout, 50000)
 
     opts =
       opts
-      |> Keyword.put_new(:port, port)
-      |> Keyword.get(:transport_options, [get_family(opts[:ip]), :binary, ip: opts[:ip], active: true])
+      |> Keyword.put(:port, port)
+      |> Keyword.put(:mtu, mtu)
+      |> Keyword.put(:io_timeout, timeout)
+      |> Keyword.put(:transport_options, [get_family(opts[:ip]), :binary, ip: opts[:ip], active: false])
 
     {__MODULE__, opts}
   end
 
   @impl true
-  def listen(opts) do
-    :gen_udp.open(opts[:port], opts[:transport_options])
+  def init(opts) do
+    case :gen_udp.open(opts[:port], opts[:transport_options]) do
+      {:ok, socket} ->
+        spawn(fn -> recv_loop(opts[:sockname], socket, opts[:mtu], opts[:io_timeout]) end)
+        {:ok, socket}
+    end
   end
 
-  @impl Spigot.Transport
+  @impl true
   def send_message(message, recipient, socket) do
     family = Transport.get_family(recipient.host)
 
@@ -41,4 +49,28 @@ defmodule Spigot.Transports.UDP do
   @impl true
   def close(socket),
     do: :gen_udp.close(socket)
+
+  defp recv(socket, mtu, timeout) do
+    case :gen_udp.recv(socket, mtu, timeout) do
+      {:ok, msg} ->
+        {:ok, msg}
+      {:error, _} = error ->
+        error
+    end
+  end
+
+  defp recv_loop(sockname, socket, mtu, timeout) do
+    case recv(socket, mtu, timeout) do
+      {:ok, msg} ->
+        Logger.debug("got io message: #{inspect(msg)}")
+      {:error, :closed} ->
+        Process.exit(self(), :shutdown)
+      {:error, :timeout} ->
+        Logger.warning("message timed out")
+      {:error, error} ->
+        Logger.warning("error handling message: #{inspect error}")
+    end
+    recv_loop(sockname, socket, mtu, timeout)
+  end
+
 end

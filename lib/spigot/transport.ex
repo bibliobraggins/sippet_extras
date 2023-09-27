@@ -4,7 +4,7 @@ defmodule Spigot.Transport do
   @callback build_options(options :: keyword()) ::
               {module(), list()} | {:error, term()}
 
-  @callback listen(options :: keyword()) ::
+  @callback init(options :: keyword()) ::
               {:ok, Types.socket()} | {:error, term()}
 
   @callback connect(binary(), :inet.port_number(), opts :: keyword()) ::
@@ -16,23 +16,8 @@ defmodule Spigot.Transport do
   @callback close(Types.socket()) ::
               :ok | {:error, term()}
 
-  @callback recv(Types.socket(), bytes :: non_neg_integer(), timeout()) ::
-              {:ok, binary()} | {:error, term()}
-
-  @callback controlling_process(Types.socket(), pid()) ::
-              :ok | {:error, term()}
-
-  @callback setopts(Types.socket(), opts :: keyword()) :: :ok | {:error, term()}
-
-  @callback getopts(Types.socket(), opts :: keyword()) ::
-              {:ok, opts :: keyword()} | {:error, term()}
-
   @optional_callbacks [
-    connect: 3,
-    setopts: 2,
-    getopts: 2,
-    controlling_process: 2,
-    recv: 3
+    connect: 3
   ]
 
   use GenServer
@@ -72,7 +57,6 @@ defmodule Spigot.Transport do
 
     opts
     |> Keyword.put_new(:address, address)
-    |> Keyword.put_new(:family, family)
     |> Keyword.put_new(:socket_module, socket_module)
     |> Keyword.put_new(:sockname, sockname)
   end
@@ -82,7 +66,7 @@ defmodule Spigot.Transport do
   end
 
   def init(opts) do
-    case opts[:socket_module].listen(opts) do
+    case opts[:socket_module].init(opts) do
       {:ok, sock} ->
         Logger.debug("#{inspect(sock)} :: #{inspect(opts)}")
         {:ok, opts}

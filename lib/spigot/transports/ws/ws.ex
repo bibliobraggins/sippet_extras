@@ -98,15 +98,15 @@ defmodule Spigot.Transports.WS do
 
     opts =
       opts
-      |> Keyword.put_new(:port, port)
-      |> Keyword.put_new(:plug, plug)
-      |> Keyword.put_new(:scheme, scheme)
+      |> Keyword.put(:port, port)
+      |> Keyword.put(:plug, plug)
+      |> Keyword.put(:scheme, scheme)
 
     {__MODULE__, opts}
   end
 
   @impl Spigot.Transport
-  def listen(opts) do
+  def init(opts) do
 
     Bandit.start_link(
       plug: opts[:plug],
