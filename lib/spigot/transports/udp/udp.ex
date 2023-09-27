@@ -18,7 +18,12 @@ defmodule Spigot.Transports.UDP do
       |> Keyword.put(:port, port)
       |> Keyword.put(:mtu, mtu)
       |> Keyword.put(:io_timeout, timeout)
-      |> Keyword.put(:transport_options, [get_family(opts[:ip]), :binary, ip: opts[:ip], active: false])
+      |> Keyword.put(:transport_options, [
+        get_family(opts[:ip]),
+        :binary,
+        ip: opts[:ip],
+        active: false
+      ])
 
     {__MODULE__, opts}
   end
@@ -54,6 +59,7 @@ defmodule Spigot.Transports.UDP do
     case :gen_udp.recv(socket, mtu, timeout) do
       {:ok, msg} ->
         {:ok, msg}
+
       {:error, _} = error ->
         error
     end
@@ -63,14 +69,17 @@ defmodule Spigot.Transports.UDP do
     case recv(socket, mtu, timeout) do
       {:ok, msg} ->
         Logger.debug("got io message: #{inspect(msg)}")
+
       {:error, :closed} ->
         Process.exit(self(), :shutdown)
+
       {:error, :timeout} ->
         Logger.warning("message timed out")
+
       {:error, error} ->
-        Logger.warning("error handling message: #{inspect error}")
+        Logger.warning("error handling message: #{inspect(error)}")
     end
+
     recv_loop(sockname, socket, mtu, timeout)
   end
-
 end

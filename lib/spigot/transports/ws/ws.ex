@@ -107,7 +107,6 @@ defmodule Spigot.Transports.WS do
 
   @impl Spigot.Transport
   def init(opts) do
-
     Bandit.start_link(
       plug: opts[:plug],
       scheme: opts[:scheme],

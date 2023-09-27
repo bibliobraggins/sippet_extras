@@ -40,6 +40,7 @@ defmodule Spigot.Transports.TCP do
       case Keyword.fetch(opts, :transport) do
         {:ok, :tls} ->
           ThousandIsland.Transports.SSL
+
         _ ->
           ThousandIsland.Transports.TCP
       end

@@ -70,10 +70,10 @@ defmodule Spigot.Transport do
       {:ok, sock} ->
         Logger.debug("#{inspect(sock)} :: #{inspect(opts)}")
         {:ok, opts}
+
       {:error, error} ->
         raise "couldn't start transport: #{inspect(error)} #{inspect(opts)}"
     end
-
   end
 
   def get_family(host) when is_binary(host),
