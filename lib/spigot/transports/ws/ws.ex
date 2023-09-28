@@ -85,6 +85,7 @@ defmodule Spigot.Transports.WS do
   ]
 
   @behaviour Spigot.Transport
+  # import Spigot.TransportHelpers
 
   defstruct @enforce_keys
 

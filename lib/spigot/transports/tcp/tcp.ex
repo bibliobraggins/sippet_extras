@@ -4,7 +4,7 @@ defmodule Spigot.Transports.TCP do
   """
 
   @behaviour Spigot.Transport
-  import Spigot.Transport
+  import Spigot.TransportHelpers
 
   require Logger
 

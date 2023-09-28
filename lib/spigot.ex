@@ -47,7 +47,6 @@ defmodule Spigot do
         ]
 
   def start_link(opts) do
-    Spigot.Transport.build_options(opts)
-    |> Spigot.Transport.start_link()
+    Spigot.Transport.start_link(opts)
   end
 end

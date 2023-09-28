@@ -1,9 +1,8 @@
 defmodule Spigot.Transports.UDP do
   @behaviour Spigot.Transport
+  import Spigot.TransportHelpers
 
   alias Sippet.Message
-  alias Spigot.Transport
-  import Spigot.Transport
 
   require Logger
 
@@ -11,13 +10,13 @@ defmodule Spigot.Transports.UDP do
   def build_options(opts) do
     port = Keyword.get(opts, :port, 5060)
     mtu = Keyword.get(opts, :mtu, 1500)
-    timeout = Keyword.get(opts, :io_timeout, 50000)
+    timeout = Keyword.get(opts, :timeout, 0)
 
     opts =
       opts
       |> Keyword.put(:port, port)
       |> Keyword.put(:mtu, mtu)
-      |> Keyword.put(:io_timeout, timeout)
+      |> Keyword.put(:timeout, timeout)
       |> Keyword.put(:transport_options, [
         get_family(opts[:ip]),
         :binary,
@@ -32,16 +31,16 @@ defmodule Spigot.Transports.UDP do
   def init(opts) do
     case :gen_udp.open(opts[:port], opts[:transport_options]) do
       {:ok, socket} ->
-        spawn(fn -> recv_loop(opts[:sockname], socket, opts[:mtu], opts[:io_timeout]) end)
+        spawn_link(fn -> recv_loop(opts[:sockname], socket, opts[:mtu], opts[:timeout]) end)
         {:ok, socket}
     end
   end
 
   @impl true
   def send_message(message, recipient, socket) do
-    family = Transport.get_family(recipient.host)
+    family = get_family(recipient.host)
 
-    with {:ok, to_ip} <- Transport.resolve_name(recipient.host, family),
+    with {:ok, to_ip} <- resolve_name(recipient.host, family),
          iodata <- Message.to_iodata(message),
          :ok <- :gen_udp.send(socket, {to_ip, recipient.port}, iodata) do
       :ok
@@ -67,16 +66,16 @@ defmodule Spigot.Transports.UDP do
 
   defp recv_loop(sockname, socket, mtu, timeout) do
     case recv(socket, mtu, timeout) do
-      {:ok, msg} ->
-        Logger.debug("got io message: #{inspect(msg)}")
+      {:ok, packet} ->
+        packet
+        |> IO.inspect()
+
+        {:ok, packet}
 
       {:error, :closed} ->
         Process.exit(self(), :shutdown)
 
-      {:error, :timeout} ->
-        Logger.warning("message timed out")
-
-      {:error, error} ->
+      error ->
         Logger.warning("error handling message: #{inspect(error)}")
     end
 
