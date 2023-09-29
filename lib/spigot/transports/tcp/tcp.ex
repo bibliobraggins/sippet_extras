@@ -3,41 +3,42 @@ defmodule Spigot.Transports.TCP do
   Implements a TCP transport via ThousandIsland
   """
 
-  @behaviour Spigot.Transport
-  import Spigot.TransportHelpers
-
   require Logger
+  use GenServer
 
+  alias Spigot.Transport
   # alias Sippet.Message, as: Message
   # alias Message.RequestLine, as: Request
   # alias Message.StatusLine, as: Response
 
-  @doc false
-  @impl true
-  def build_options(opts) do
-    port = Keyword.get(opts, :port, 5060)
-
+  def child_spec(options) do
     transport_options = [
-      ip: opts[:ip],
+      ip: options[:ip],
       reuseport: true
     ]
 
-    opts =
-      opts
-      |> Keyword.put(:port, port)
+    options =
+      options
       |> Keyword.put(:reuseport, true)
       |> Keyword.put(:transport_options, transport_options)
 
-    {__MODULE__, opts}
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [options]}
+    }
+  end
+
+  def start_link(options) do
+    GenServer.start_link(__MODULE__, options, name: options[:sockname])
   end
 
   @doc """
   Starts the TCP transport.
   """
   @impl true
-  def init(opts) do
+  def init(options) do
     transport_module =
-      case Keyword.fetch(opts, :transport) do
+      case Keyword.fetch(options, :transport) do
         {:ok, :tls} ->
           ThousandIsland.Transports.SSL
 
@@ -46,37 +47,35 @@ defmodule Spigot.Transports.TCP do
       end
 
     case ThousandIsland.start_link(
-           port: opts[:port],
+           port: options[:port],
            handler_module: Spigot.Transports.TCP.Handler,
            transport_module: transport_module,
-           transport_options: opts[:transport_options],
-           handler_options: [user_agent: opts[:user_agent]]
+           transport_options: options[:transport_options],
+           handler_options: [user_agent: options[:user_agent]]
          ) do
       {:ok, pid} ->
-        {:ok, Keyword.put_new(opts, :socket, pid)}
+        Logger.debug("started transport: #{inspect(options[:sockname])}")
+        {:ok, Keyword.put_new(options, :socket, pid)}
 
-      {:error, reason} ->
-        {:error, reason}
+      {:error, _} = err ->
+        raise("could not start TCP transport: #{inspect(err)}")
     end
   end
 
-  @impl true
-  def connect(to_host, to_port, opts) do
-    family = get_family(to_host)
+  def connect(to_host, to_port, options) do
+    family = Transport.get_family(to_host)
 
-    with {:ok, to_ip} <- resolve_name(to_host, family) do
-      :gen_tcp.connect(to_ip, to_port, opts)
+    with {:ok, to_ip} <- Transport.resolve_name(to_host, family) do
+      :gen_tcp.connect(to_ip, to_port, options)
     else
       error ->
         error
     end
   end
 
-  @impl true
-  def send_message(message, pid, _opts) do
+  def send_message(message, pid, _options) do
     send({:send_message, message}, pid)
   end
 
-  @impl true
   def close(pid, timeout \\ 15000), do: ThousandIsland.stop(pid, timeout)
 end

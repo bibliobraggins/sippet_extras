@@ -1,11 +1,9 @@
 defmodule Spigot.Transport do
-  require Logger
-  import Spigot.TransportHelpers
 
   @callback build_options(options :: keyword()) ::
               {module(), list()} | {:error, term()}
 
-  @callback init(options :: keyword()) ::
+  @callback listen(options :: keyword()) ::
               {:ok, Types.socket()} | {:error, term()}
 
   @callback connect(binary(), :inet.port_number(), opts :: keyword()) ::
@@ -21,76 +19,36 @@ defmodule Spigot.Transport do
     connect: 3
   ]
 
-  use GenServer
+  def get_family(host) when is_binary(host),
+    do: host |> to_charlist() |> get_family()
 
-  def start_link(opts) do
-    address = Keyword.get(opts, :address, "0.0.0.0")
-    family = get_family(address)
-    ip = get_ip(address, family)
-
-    opts =
-      opts
-      |> Keyword.put_new(:ip, ip)
-      |> Keyword.put_new(:family, family)
-
-    {socket_module, opts} =
-      case Keyword.fetch!(opts, :transport) do
-        :udp ->
-          Spigot.Transports.UDP.build_options(opts)
-
-        :tcp ->
-          Spigot.Transports.TCP.build_options(opts)
-
-        :tls ->
-          Spigot.Transports.TCP.build_options(opts)
-
-        :ws ->
-          Spigot.Transports.WS.build_options(opts)
-
-        :wss ->
-          Spigot.Transports.WS.build_options(opts)
-
-        _ ->
-          raise "must provide a supported transport option"
-      end
-
-    sockname = :"#{address}:#{opts[:port]}/#{opts[:transport]}"
-
-    opts =
-      opts
-      |> Keyword.put(:address, address)
-      |> Keyword.put(:socket_module, socket_module)
-      |> Keyword.put(:sockname, sockname)
-
-    GenServer.start_link(__MODULE__, opts, name: sockname)
-  end
-
-  @impl true
-  def init(opts) do
-    IO.inspect(opts)
-
-    case opts[:socket_module].init(opts) do
-      {:ok, sock} ->
-        Logger.debug("#{inspect(sock)} :: #{inspect(opts)}")
-        {:ok, opts |> Keyword.put(:socket, sock)}
+  def get_family(host) when is_list(host) do
+    case :inet.parse_address(host) do
+      {:ok, host} ->
+        get_family(host)
 
       {:error, error} ->
-        raise "couldn't start transport: #{inspect(error)} #{inspect(opts)}"
+        raise("invalid ip address, got: #{inspect(error)}")
     end
   end
 
-  @impl true
-  def handle_info({from_host, from_port, msg}, state) do
-    Logger.debug("got io message: #{inspect({from_host, from_port, Sippet.Message.parse!(msg)})}")
-    {:noreply, state}
+  def get_family({_, _, _, _}), do: :inet
+  def get_family({_, _, _, _, _, _, _}), do: :inet6
+
+  def get_ip(address, family) do
+    case resolve_name(address, family) do
+      {:ok, ip} when is_tuple(ip) ->
+        ip
+
+      {:error, reason} ->
+        raise ArgumentError,
+              ":address contains an invalid IP or DNS name, got: #{inspect(reason)}"
+    end
   end
 
-  @impl true
-  def terminate(:shutdown, opts) do
-    "Shutting down transport: #{inspect(opts[:sockname])}" |> Logger.debug()
-
-    opts[:socket_module].close(opts[:socket])
-
-    exit(:shutdown)
+  def resolve_name(host, family) do
+    host
+    |> String.to_charlist()
+    |> :inet.getaddr(family)
   end
 end

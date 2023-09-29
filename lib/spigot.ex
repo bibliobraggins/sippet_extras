@@ -1,6 +1,7 @@
 defmodule Spigot do
-  alias Spigot.Types
+  use Application
 
+  alias Spigot.{Types, Transport}
   alias Sippet.URI, as: SIPURI
 
   @moduledoc """
@@ -46,7 +47,53 @@ defmodule Spigot do
           cipher_suite: :string | :compatible
         ]
 
-  def start_link(opts) do
-    Spigot.Transport.start_link(opts)
+  def start(_, args) do
+    args =
+      Keyword.put_new(args, :strategy, :one_for_one)
+
+    DynamicSupervisor.start_link(__MODULE__, args, name: __MODULE__)
   end
+
+  def init(args) do
+    DynamicSupervisor.init(args)
+  end
+
+  def start_transport(options) do
+    address = Keyword.get(options, :address, "0.0.0.0")
+    family = Transport.get_family(address)
+    ip = Transport.get_ip(address, family)
+    port = Keyword.get(options, :port, 5060)
+    transport = Keyword.get(options, :transport, :udp)
+
+    options =
+      options
+      |> Keyword.put_new(:ip, ip)
+      |> Keyword.put_new(:family, family)
+      |> Keyword.put_new(:port, port)
+      |> Keyword.put(:sockname, :"#{address}:#{port}/#{transport}")
+
+    spec =
+      case transport do
+        :udp ->
+          Spigot.Transports.UDP.child_spec(options)
+
+        :tcp ->
+          Spigot.Transports.TCP.child_spec(options)
+
+        :tls ->
+          Spigot.Transports.TCP.child_spec(options)
+
+        :ws ->
+          Spigot.Transports.WS.child_spec(options)
+
+        :wss ->
+          Spigot.Transports.WS.child_spec(options)
+
+        _ ->
+          raise "must provide a supported transport option"
+      end
+
+    DynamicSupervisor.start_child(__MODULE__, spec)
+  end
+
 end

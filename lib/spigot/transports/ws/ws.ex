@@ -73,55 +73,45 @@ defmodule Spigot.Transports.WS do
 
   """
 
-  @enforce_keys [
-    :name,
-    :ip,
-    :port,
-    :family,
-    :scheme,
-    :websocket_options,
-    :tls_options,
-    :connections
-  ]
-
-  @behaviour Spigot.Transport
-  # import Spigot.TransportHelpers
-
-  defstruct @enforce_keys
-
+  use GenServer
   require Logger
 
-  @impl Spigot.Transport
-  def build_options(opts) do
-    port = Keyword.get(opts, :port, 4000)
-    plug = Keyword.get(opts, :plug, {Spigot.Transports.WS.Plug, user_agent: opts[:user_agent]})
-    scheme = Keyword.get(opts, :scheme, :http)
+  def child_spec(options) do
+    plug = Keyword.get(options, :plug, {Spigot.Transports.WS.Plug, user_agent: options[:user_agent]})
+    scheme = Keyword.get(options, :scheme, :http)
 
-    opts =
-      opts
-      |> Keyword.put(:port, port)
+    options =
+      options
       |> Keyword.put(:plug, plug)
       |> Keyword.put(:scheme, scheme)
 
-    {__MODULE__, opts}
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [options]}
+    }
   end
 
-  @impl Spigot.Transport
-  def init(opts) do
-    Bandit.start_link(
-      plug: opts[:plug],
-      scheme: opts[:scheme],
-      ip: opts[:ip],
-      port: opts[:port]
-    )
+  def start_link(options) do
+    GenServer.start_link(__MODULE__, options, name: options[:sockname])
   end
 
   @impl true
-  def send_message(message, pid, _opts) do
+  def init(options) do
+    Bandit.start_link(
+      plug: options[:plug],
+      scheme: options[:scheme],
+      ip: options[:ip],
+      port: options[:port]
+    )
+    Logger.debug("started transport: #{inspect(options[:sockname])}")
+
+    {:ok, options}
+  end
+
+  def send_message(message, pid, _options) do
     send({:send_message, message}, pid)
   end
 
-  @impl true
   def close(pid) do
     Process.exit(pid, :shutdown)
     :ok

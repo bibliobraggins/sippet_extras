@@ -1,46 +1,68 @@
 defmodule Spigot.Transports.UDP do
-  @behaviour Spigot.Transport
-  import Spigot.TransportHelpers
+  use GenServer
 
+  alias Spigot.Transport
   alias Sippet.Message
 
   require Logger
 
-  @impl true
-  def build_options(opts) do
-    port = Keyword.get(opts, :port, 5060)
-    mtu = Keyword.get(opts, :mtu, 1500)
-    timeout = Keyword.get(opts, :timeout, 0)
+  def child_spec(options) do
+    port = Keyword.get(options, :port, 5060)
+    mtu = Keyword.get(options, :mtu, 1500)
+    timeout = Keyword.get(options, :timeout, 10_000)
 
-    opts =
-      opts
+    options =
+      options
       |> Keyword.put(:port, port)
       |> Keyword.put(:mtu, mtu)
       |> Keyword.put(:timeout, timeout)
       |> Keyword.put(:transport_options, [
-        get_family(opts[:ip]),
+        Transport.get_family(options[:ip]),
         :binary,
-        ip: opts[:ip],
-        active: false
+        ip: options[:ip],
+        active: true
       ])
 
-    {__MODULE__, opts}
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [options]}
+    }
+  end
+
+  def start_link(options) do
+    GenServer.start_link(__MODULE__, options, name: options[:sockname])
   end
 
   @impl true
-  def init(opts) do
-    case :gen_udp.open(opts[:port], opts[:transport_options]) do
+  def init(options) do
+    case listen(options) do
       {:ok, socket} ->
-        spawn_link(fn -> recv_loop(opts[:sockname], socket, opts[:mtu], opts[:timeout]) end)
-        {:ok, socket}
+        options = Keyword.put(options, :socket, socket)
+        Logger.debug("started transport: #{inspect(options[:sockname])}")
+        {:ok, options}
+      error ->
+        raise "an error occurred starting the UDP socket: #{inspect error}"
     end
   end
 
   @impl true
-  def send_message(message, recipient, socket) do
-    family = get_family(recipient.host)
+  def handle_info({:udp, _socket, _from_host, _from_port, msg}, options) do
+    msg
+    |> Message.parse!()
+    |> inspect()
+    |> Logger.debug()
 
-    with {:ok, to_ip} <- resolve_name(recipient.host, family),
+    {:noreply, options}
+  end
+
+
+  @spec listen(list()) ::
+          {:error, atom} | {:ok, port}
+  def listen(options), do: :gen_udp.open(options[:port], options[:transport_options])
+
+
+  def send_message(message, recipient, socket, family) do
+    with {:ok, to_ip} <- Transport.resolve_name(recipient.host, family),
          iodata <- Message.to_iodata(message),
          :ok <- :gen_udp.send(socket, {to_ip, recipient.port}, iodata) do
       :ok
@@ -51,34 +73,9 @@ defmodule Spigot.Transports.UDP do
   end
 
   @impl true
-  def close(socket),
-    do: :gen_udp.close(socket)
-
-  defp recv(socket, mtu, timeout) do
-    case :gen_udp.recv(socket, mtu, timeout) do
-      {:ok, msg} ->
-        {:ok, msg}
-
-      {:error, _} = error ->
-        error
-    end
+  def terminate(reason, options) do
+    Logger.info("terminating #{inspect(options[:sockname])}, reason: #{inspect(reason)}")
+    :gen_udp.close(options[:socket])
   end
 
-  defp recv_loop(sockname, socket, mtu, timeout) do
-    case recv(socket, mtu, timeout) do
-      {:ok, packet} ->
-        packet
-        |> IO.inspect()
-
-        {:ok, packet}
-
-      {:error, :closed} ->
-        Process.exit(self(), :shutdown)
-
-      error ->
-        Logger.warning("error handling message: #{inspect(error)}")
-    end
-
-    recv_loop(sockname, socket, mtu, timeout)
-  end
 end
