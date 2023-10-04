@@ -40,26 +40,38 @@ defmodule Spigot.Transports.UDP do
         options = Keyword.put(options, :socket, socket)
         Logger.debug("started transport: #{inspect(options[:sockname])}")
         {:ok, options}
+
       error ->
-        raise "an error occurred starting the UDP socket: #{inspect error}"
+        raise "an error occurred starting the UDP socket: #{inspect(error)}"
     end
   end
 
   @impl true
-  def handle_info({:udp, _socket, _from_host, _from_port, msg}, options) do
-    msg
-    |> Message.parse!()
-    |> inspect()
-    |> Logger.debug()
+  def handle_call({:send_message, message, to_host, to_port, key}, _from, state) do
+    with {:ok, to_ip} <- Transport.resolve_name(to_host, state[:family]),
+         iodata <- Message.to_iodata(message),
+         :ok <- :gen_udp.send(state[:socket], {to_ip, to_port}, iodata) do
+      :ok
+    else
+      {:error, reason} ->
+        Logger.warning("udp transport error for #{to_host}:#{to_port}: #{inspect(reason)}")
 
-    {:noreply, options}
+        if key != nil do
+          Spigot.Router.receive_transport_error(state[:user_agent], key, reason)
+        end
+    end
+
+    {:reply, :ok, state}
   end
 
+  @impl true
+  def handle_info({:udp, _socket, host, port, msg}, state) do
+    Spigot.Router.handle_transport_message(msg, {:udp, host, port}, state[:user_agent])
 
-  @spec listen(list()) ::
-          {:error, atom} | {:ok, port}
-  def listen(options), do: :gen_udp.open(options[:port], options[:transport_options])
+    {:noreply, state}
+  end
 
+  def listen(state), do: :gen_udp.open(state[:port], state[:transport_options])
 
   def send_message(message, recipient, socket, family) do
     with {:ok, to_ip} <- Transport.resolve_name(recipient.host, family),
@@ -77,5 +89,4 @@ defmodule Spigot.Transports.UDP do
     Logger.info("terminating #{inspect(options[:sockname])}, reason: #{inspect(reason)}")
     :gen_udp.close(options[:socket])
   end
-
 end

@@ -3,7 +3,7 @@ defmodule Demo do
 
   use Spigot.UserAgent
 
-  def register(transaction) do
-    Logger.debug(transaction.request |> to_string())
+  def receive_request(request, _key) do
+    Logger.debug(request |> to_string())
   end
 end

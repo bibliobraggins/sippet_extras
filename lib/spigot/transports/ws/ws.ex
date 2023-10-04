@@ -77,7 +77,9 @@ defmodule Spigot.Transports.WS do
   require Logger
 
   def child_spec(options) do
-    plug = Keyword.get(options, :plug, {Spigot.Transports.WS.Plug, user_agent: options[:user_agent]})
+    plug =
+      Keyword.get(options, :plug, {Spigot.Transports.WS.Plug, user_agent: options[:user_agent]})
+
     scheme = Keyword.get(options, :scheme, :http)
 
     options =
@@ -103,6 +105,7 @@ defmodule Spigot.Transports.WS do
       ip: options[:ip],
       port: options[:port]
     )
+
     Logger.debug("started transport: #{inspect(options[:sockname])}")
 
     {:ok, options}

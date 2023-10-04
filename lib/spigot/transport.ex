@@ -1,24 +1,5 @@
 defmodule Spigot.Transport do
 
-  @callback build_options(options :: keyword()) ::
-              {module(), list()} | {:error, term()}
-
-  @callback listen(options :: keyword()) ::
-              {:ok, Types.socket()} | {:error, term()}
-
-  @callback connect(binary(), :inet.port_number(), opts :: keyword()) ::
-              {:ok, term()} | {:error, term()}
-
-  @callback send_message(Types.message(), term(), keyword()) ::
-              :ok | {:error, term()}
-
-  @callback close(Types.socket()) ::
-              :ok | {:error, term()}
-
-  @optional_callbacks [
-    connect: 3
-  ]
-
   def get_family(host) when is_binary(host),
     do: host |> to_charlist() |> get_family()
 

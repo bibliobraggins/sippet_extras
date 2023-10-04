@@ -1,5 +1,4 @@
 defmodule Spigot.UserAgent do
-  # alias Sippet.Message, as: MSG
   alias Sippet.Message
   alias Spigot.Types
 
@@ -16,9 +15,8 @@ defmodule Spigot.UserAgent do
              end
            )
 
-  defmacro __using__(_) do
+  defmacro __using__(user_agent_options \\ nil) do
     @methods |> inspect()
-
     quote location: :keep do
       @behaviour Spigot.UserAgent
       import Spigot.UserAgent
@@ -42,8 +40,12 @@ defmodule Spigot.UserAgent do
       # When a request comes in to a UserAgent, A process is spawned to construct the message
       # and handle responses (or subsequent transactions) accordingly.
       # the process is will be named according to it's URI, in a registry specific to the UserAgent scope
-      def start_client(method, options),
-        do: Spigot.UserAgent.Client.start_link({__MODULE__, method, options})
+
+
+      if length(unquote(user_agent_options)) > 0 do
+        ua_opts = unquote(user_agent_options)
+        IO.inspect(ua_opts)
+      end
     end
   end
 end

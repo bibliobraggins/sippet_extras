@@ -15,12 +15,15 @@ defmodule Spigot.Transaction do
     request as it passes it on to the next Agent.
   """
 
+  @type origin :: %{
+          host: binary | charlist | :inet.ip_address()
+        }
+
   @type t :: %__MODULE__{
           request: Types.request(),
           provisional: [Types.response()],
           final: Types.response(),
-          manipulations: keyword(),
-          origin: atom() | term()
+          origin: origin
         }
 
   @enforce_keys [
@@ -29,13 +32,10 @@ defmodule Spigot.Transaction do
 
   defstruct @enforce_keys ++
               [
+                :origin,
                 :provisional,
-                :final,
-                :manipulations,
-                :origin
+                :final
               ]
-
-  @type transform :: function()
 
   @type transaction() :: t()
 
@@ -60,17 +60,33 @@ defmodule Spigot.Transaction do
   @spec new(Sippet.Message.t()) :: t()
   def new(%SIP{start_line: %Request{}} = request), do: struct(__MODULE__, request: request)
 
-  @spec put_response(map, Sippet.Message.t()) :: t()
+  @spec put_response(transaction(), Sippet.Message.t()) ::
+          {:error, transaction()} | {:ok, transaction()}
   def put_response(transaction, %SIP{start_line: %Response{status_code: status_code}} = response) do
     cond do
       status_code in [100..199] ->
-        Map.put(transaction, :final, response)
+        put_provisional(transaction, response)
 
       status_code in [200..999] ->
-        Map.put(transaction, :provisional, fn i -> put_provisional(i, response) end)
+        put_final(transaction, response)
     end
   end
 
-  defp put_provisional(provisionals, response) when is_list(provisionals),
-    do: List.insert_at(provisionals, length(provisionals), response)
+  def put_provisional(transaction, response) when is_list(transaction.provisionals) do
+    provisionals =
+      transaction.provisionals
+      |> List.insert_at(length(transaction.provisionals), response)
+
+    {:ok, %{transaction | provisionals: provisionals}}
+  end
+
+  def put_final(transaction, response) do
+    case Map.has_key?(transaction, :final) do
+      false ->
+        {:ok, %{transaction | final: response}}
+
+      true ->
+        {:error, transaction}
+    end
+  end
 end
