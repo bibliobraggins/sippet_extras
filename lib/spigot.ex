@@ -1,6 +1,4 @@
 defmodule Spigot do
-  use Application
-
   alias Spigot.{Types, Transport}
   alias Sippet.{URI}
 
@@ -11,7 +9,7 @@ defmodule Spigot do
     a way to start transports that are associated with your UserAgent module
 
     Spigot also takes most of it's concepts directly from the underlying
-    Sippet library, but has been modified to allow associating many socket
+    Sippet library, but has been modified to allow associating many socket_name
     transports with the same UserAgent module.
   """
 
@@ -23,7 +21,7 @@ defmodule Spigot do
           proxy: binary() | URI.t()
         ]
 
-  @type websocket_options :: [
+  @type websocket_name_options :: [
           enabled: boolean(),
           max_frame_size: pos_integer(),
           validate_text_frames: boolean(),
@@ -41,18 +39,7 @@ defmodule Spigot do
           cipher_suite: :string | :compatible
         ]
 
-  def start(_, args) do
-    args =
-      Keyword.put_new(args, :strategy, :one_for_one)
-
-    DynamicSupervisor.start_link(__MODULE__, args, name: __MODULE__)
-  end
-
-  def init(args) do
-    DynamicSupervisor.init(args)
-  end
-
-  def start_transport(options) do
+  def start_link(options) do
     user_agent = Keyword.get(options, :user_agent)
     address = Keyword.get(options, :address, "0.0.0.0")
     family = Transport.get_family(address)
@@ -66,31 +53,41 @@ defmodule Spigot do
         Keyword.get(options, :port, 5060)
       end
 
-    socket = :"#{address}:#{port}/#{transport}"
+    socket_name = :"#{address}:#{port}/#{transport}"
 
     options =
-      options
-      |> Keyword.put_new(:ip, ip)
-      |> Keyword.put_new(:family, family)
-      |> Keyword.put_new(:port, port)
-      |> Keyword.put(:socket, socket)
+      []
+      |> Keyword.put(:ip, ip)
+      |> Keyword.put(:family, family)
+      |> Keyword.put(:port, port)
+      |> Keyword.put(:transport, transport)
+      |> Keyword.put(:socket_name, socket_name)
       |> Keyword.put(:user_agent, user_agent)
 
-    if is_nil(get_transports()) do
-      Process.put(:transports, [socket])
-    else
-      Process.put(:transports, List.insert_at(get_transports(), length(get_transports()), socket))
-    end
-
-    setup_transport(transport, options)
-    |> Enum.each(fn child -> DynamicSupervisor.start_child(__MODULE__, child) end)
+    Supervisor.start_link(__MODULE__, options)
   end
 
-  def get_transports(), do: Process.get(:transports)
+  def init(options) do
+    children = [
+      setup_transport(options),
+      {
+        Registry,
+        name: :"#{options[:socket_name]}.Registry",
+        keys: :unique,
+        partitions: System.schedulers_online()
+      },
+      {
+        DynamicSupervisor,
+        strategy: :one_for_one, name: :"#{options[:socket_name]}.Supervisor"
+      }
+    ]
 
-  defp setup_transport(transport, options) do
+    Supervisor.init(children, strategy: :one_for_one)
+  end
+
+  defp setup_transport(options) do
     mod =
-      case transport do
+      case options[:transport] do
         :udp ->
           Spigot.Transports.UDP
 
@@ -111,13 +108,6 @@ defmodule Spigot do
       end
 
     mod.child_spec(options)
-  end
-
-  def transports() do
-    DynamicSupervisor.which_children(__MODULE__)
-    |> Enum.filter(fn {:undefined, _pid, type, [_MODULE]} = match ->
-      if type == :worker, do: match
-    end)
   end
 
 end

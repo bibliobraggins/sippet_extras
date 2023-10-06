@@ -76,6 +76,8 @@ defmodule Spigot.Transports.WS do
   use GenServer
   require Logger
 
+  alias Spigot.Connections
+
   def child_spec(options) do
     plug =
       Keyword.get(options, :plug, {Spigot.Transports.WS.Plug, user_agent: options[:user_agent]})
@@ -88,13 +90,15 @@ defmodule Spigot.Transports.WS do
       |> Keyword.put(:scheme, scheme)
 
     %{
-      id: options[:socket],
+      id: options[:socket_name],
       start: {__MODULE__, :start_link, [options]}
     }
   end
 
   def start_link(options) do
-    GenServer.start_link(__MODULE__, options, name: options[:sockname])
+    options = Keyword.put(options, :connections, Connections.init(options[:socket_name]))
+
+    GenServer.start_link(__MODULE__, options, name: options[:socket_name])
   end
 
   @impl true
@@ -106,13 +110,15 @@ defmodule Spigot.Transports.WS do
       port: options[:port]
     )
 
-    Logger.info("started transport: #{inspect(options[:sockname])}")
+    Logger.info("started transport: #{inspect(options[:socket_name])}")
 
-    {:ok, options}
+    {:ok, Keyword.put(options, :connections, options)}
   end
 
-  def send_message(message, pid, _options) do
-    send({:send_message, message}, pid)
+  @impl true
+  def handle_call({:send_message, _message, _to_host, _to_port, _key}, _from, state) do
+
+    {:reply, :ok, state}
   end
 
   def close(pid) do

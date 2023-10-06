@@ -30,11 +30,7 @@ defmodule Spigot.Transports.UDP do
   end
 
   def start_link(options) do
-    case Transport.start_workers(options[:sockname]) do
-      :ok ->
-        GenServer.start_link(__MODULE__, options, name: options[:sockname])
-      error ->
-    end
+    GenServer.start_link(__MODULE__, options, name: options[:socket_name])
   end
 
   @impl true
@@ -42,7 +38,7 @@ defmodule Spigot.Transports.UDP do
     case listen(options) do
       {:ok, socket} ->
         options = Keyword.put(options, :socket, socket)
-        Logger.info("started transport: #{inspect(options[:sockname])}")
+        Logger.info("started transport: #{inspect(options[:socket_name])}")
         {:ok, options}
 
       error ->
@@ -61,7 +57,7 @@ defmodule Spigot.Transports.UDP do
         Logger.warning("udp transport error for #{to_host}:#{to_port}: #{inspect(reason)}")
 
         if key != nil do
-          Spigot.Router.receive_transport_error(state[:sockname], key, reason)
+          Spigot.Router.receive_transport_error(state[:socket_name], key, reason)
         end
     end
 
@@ -70,7 +66,12 @@ defmodule Spigot.Transports.UDP do
 
   @impl true
   def handle_info({:udp, _socket, host, port, msg}, state) do
-    Spigot.Router.handle_transport_message(msg, {:udp, host, port}, state[:user_agent], state[:sockname])
+    Spigot.Router.handle_transport_message(
+      msg,
+      {:udp, host, port},
+      state[:user_agent],
+      state[:socket_name]
+    )
 
     {:noreply, state}
   end
@@ -90,7 +91,7 @@ defmodule Spigot.Transports.UDP do
 
   @impl true
   def terminate(reason, options) do
-    Logger.info("terminating #{inspect(options[:sockname])}, reason: #{inspect(reason)}")
+    Logger.info("terminating #{inspect(options[:socket])}, reason: #{inspect(reason)}")
     :gen_udp.close(options[:socket])
   end
 end

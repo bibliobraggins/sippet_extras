@@ -1,7 +1,11 @@
 defmodule Spigot.Transports.WS.Server do
   require Logger
 
+  alias Spigot.Connections
+
   def init(state) do
+    Connections.connect(state[:connections], state[:peer], self())
+
     {:ok, state}
   end
 
@@ -20,7 +24,7 @@ defmodule Spigot.Transports.WS.Server do
       data,
       {:ws, peer.address, peer.port},
       state[:user_agent],
-      state[:sockname]
+      state[:socket]
     )
 
     ## if we can parse the io message, we should begin a transaction,

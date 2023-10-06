@@ -6,13 +6,14 @@ defmodule Spigot.Transports.TCP do
   require Logger
   use GenServer
 
-  alias Spigot.Transport
+  alias Spigot.{Transport, Connections}
   # alias Sippet.Message, as: Message
   # alias Message.RequestLine, as: Request
   # alias Message.StatusLine, as: Response
 
   def child_spec(options) do
     {ip, options} = Keyword.pop(options, :ip)
+
     transport_options = [
       ip: ip,
       reuseport: true
@@ -30,7 +31,9 @@ defmodule Spigot.Transports.TCP do
   end
 
   def start_link(options) do
-    GenServer.start_link(__MODULE__, options, name: options[:sockname])
+    options = Keyword.put(options, :connections, Connections.init(options[:socket_name]))
+
+    GenServer.start_link(__MODULE__, options, name: options[:socket_name])
   end
 
   @doc """
@@ -55,7 +58,7 @@ defmodule Spigot.Transports.TCP do
            handler_options: [user_agent: options[:user_agent]]
          ) do
       {:ok, pid} ->
-        Logger.info("started transport: #{inspect(options[:sockname])}")
+        Logger.info("started transport: #{inspect(options[:socket_name])}")
         {:ok, Keyword.put_new(options, :socket, pid)}
 
       {:error, _} = err ->

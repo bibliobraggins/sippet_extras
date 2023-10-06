@@ -1,14 +1,18 @@
 defmodule Spigot.Transport do
-
   def start_workers(socket) do
-    with {:ok, registry} when is_pid(registry) <- Registry.start_link(name: :"#{socket}.Registry",keys: :unique, partitions: System.schedulers_online()),
-      {:ok, supervisor} when is_pid(supervisor) <- DynamicSupervisor.start_link(strategy: :one_for_one, name: :"#{socket}.Supervisor")
-      do
-        :ok
-      else
-        error ->
-          {:error, error}
-      end
+    with {:ok, registry} when is_pid(registry) <-
+           Registry.start_link(
+             name: :"#{socket}.Registry",
+             keys: :unique,
+             partitions: System.schedulers_online()
+           ),
+         {:ok, supervisor} when is_pid(supervisor) <-
+           DynamicSupervisor.start_link(strategy: :one_for_one, name: :"#{socket}.Supervisor") do
+      :ok
+    else
+      error ->
+        {:error, error}
+    end
   end
 
   def get_family(host) when is_binary(host),

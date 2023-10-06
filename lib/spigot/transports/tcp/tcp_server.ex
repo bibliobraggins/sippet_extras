@@ -1,14 +1,14 @@
 defmodule Spigot.Transports.TCP.Server do
   use ThousandIsland.Handler
 
-  alias ThousandIsland.Socket
-  alias ThousandIsland
+  alias ThousandIsland.{Socket}
+  alias Spigot.{Connections}
 
   require Logger
 
   @impl ThousandIsland.Handler
-  def handle_connection(_socket, state) do
-    state = state
+  def handle_connection(socket, state) do
+    Connections.connect(state[:connections], Socket.peer_info(socket), self())
 
     {:continue, state}
   end
