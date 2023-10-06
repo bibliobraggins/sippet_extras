@@ -1,7 +1,5 @@
 # Spigot
 
-Spigot aims to be a [Plug](https://github.com/elixir-plug/plug) style library for SIP applications.
-
 TODO: 
   - TCP transport: 
     - debug and simplify TCP transport function calls
@@ -68,27 +66,15 @@ The core library elixir-sippet provides built-in support for the following as we
     
 aimed features:
   - off-the-shelf UDP, TCP, TLS, WS, and WSS transports
-  - plug router style DSL for request handling
 
 ## Example
 
 ```elixir
 defmodule MyUserAgent do 
   use Spigot.UserAgent
-  # define routes
-  def ack(msg, _key) do
-    send_resp(msg, 200)
-  end
-  
-  def register(msg, _key) do
-    send_resp(msg, 200)
-  end
 
-  def invite(msg, _key) do
-    status_code = ...do some thing here...
-    ### begin call handling ###
-    
-    send_resp(msg, status_code)
+  def receive_request(request, key) do
+    "... do some stuff here ..."
   end
 end
 ```
