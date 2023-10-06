@@ -70,9 +70,9 @@ defmodule Spigot.Transactions.Server.Invite do
   def proceeding(event_type, event_content, data),
     do: unhandled_event(event_type, event_content, data)
 
-  def completed(:enter, _old_state, %State{request: request} = data) do
+  def completed(:enter, _old_state, %State{request: request}) do
     actions =
-      if reliable?(request, data) do
+      if Spigot.reliable?(request) do
         [{:state_timeout, @timer_h, {@timer_h, @timer_h}}]
       else
         [{:state_timeout, @timer_g, {@timer_g, @timer_g}}]
@@ -116,7 +116,7 @@ defmodule Spigot.Transactions.Server.Invite do
     do: unhandled_event(event_type, event_content, data)
 
   def confirmed(:enter, _old_state, %State{request: request} = data) do
-    if reliable?(request, data) do
+    if Spigot.reliable?(request) do
       {:stop, :normal, data}
     else
       {:keep_state_and_data, [{:state_timeout, @timer_i, nil}]}

@@ -29,16 +29,16 @@ defmodule Spigot.Transactions.Client do
         {:ok, initial_state, data}
       end
 
-      defp send_request(request, %State{key: key, socket_name: socket_name} = data),
-        do: Spigot.Router.send_transport_message(socket_name, request, key)
+      defp send_request(request, %State{key: key, spigot: spigot} = data),
+        do: Spigot.Router.send_transport_message(spigot, request, key)
 
-      defp receive_response(response, %State{key: key, socket_name: socket_name} = data),
-        do: Spigot.Router.to_ua(socket_name, :receive_response, [response, key])
+      defp receive_response(response, %State{key: key, spigot: spigot} = data),
+        do: Spigot.Router.to_ua(spigot, :receive_response, [response, spigot, key])
 
-      def shutdown(reason, %State{key: key, socket_name: socket_name} = data) do
+      def shutdown(reason, %State{key: key, spigot: spigot} = data) do
         Logger.warning("client transaction #{inspect(key)} shutdown: #{reason}")
 
-        Spigot.Router.to_ua(socket_name, :receive_error, [reason, key])
+        Spigot.Router.to_ua(spigot, :receive_error, [reason, spigot, key])
 
         {:stop, :shutdown, data}
       end
@@ -46,8 +46,8 @@ defmodule Spigot.Transactions.Client do
       def timeout(%State{} = data),
         do: shutdown(:timeout, data)
 
-      def reliable?(request, %State{socket_name: socket_name}),
-        do: Sippet.reliable?(socket_name, request)
+      def reliable?(request, %State{spigot: spigot}),
+        do: Spigot.reliable?(request)
 
       def unhandled_event(:cast, :terminate, %State{key: key} = data) do
         Logger.debug("client transaction #{inspect(key)} terminated")

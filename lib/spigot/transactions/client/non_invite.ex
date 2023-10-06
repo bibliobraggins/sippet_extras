@@ -24,7 +24,7 @@ defmodule Spigot.Transactions.Client.NonInvite do
       |> put(:deadline_timer, send_after(self(), :deadline, @timer_f))
 
     extras =
-      if reliable?(request, data) do
+      if Spigot.reliable?(request) do
         extras
       else
         extras
@@ -126,7 +126,7 @@ defmodule Spigot.Transactions.Client.NonInvite do
   def completed(:enter, _old_state, %State{request: request} = data) do
     data = cancel_timers(data)
 
-    if reliable?(request, data) do
+    if Spigot.reliable?(request) do
       {:stop, :normal, data}
     else
       {:keep_state, data, [{:state_timeout, @timer_k, nil}]}

@@ -90,15 +90,15 @@ defmodule Spigot.Transports.WS do
       |> Keyword.put(:scheme, scheme)
 
     %{
-      id: options[:socket_name],
+      id: options[:spigot],
       start: {__MODULE__, :start_link, [options]}
     }
   end
 
   def start_link(options) do
-    options = Keyword.put(options, :connections, Connections.init(options[:socket_name]))
+    options = Keyword.put(options, :connections, Connections.init(options[:spigot]))
 
-    GenServer.start_link(__MODULE__, options, name: options[:socket_name])
+    GenServer.start_link(__MODULE__, options, name: options[:spigot])
   end
 
   @impl true
@@ -110,14 +110,13 @@ defmodule Spigot.Transports.WS do
       port: options[:port]
     )
 
-    Logger.info("started transport: #{inspect(options[:socket_name])}")
+    Logger.info("started transport: #{inspect(options[:spigot])}")
 
     {:ok, Keyword.put(options, :connections, options)}
   end
 
   @impl true
   def handle_call({:send_message, _message, _to_host, _to_port, _key}, _from, state) do
-
     {:reply, :ok, state}
   end
 

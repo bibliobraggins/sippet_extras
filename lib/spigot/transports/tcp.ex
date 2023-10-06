@@ -7,9 +7,7 @@ defmodule Spigot.Transports.TCP do
   use GenServer
 
   alias Spigot.{Transport, Connections}
-  # alias Sippet.Message, as: Message
-  # alias Message.RequestLine, as: Request
-  # alias Message.StatusLine, as: Response
+  alias Sippet.Message
 
   def child_spec(options) do
     {ip, options} = Keyword.pop(options, :ip)
@@ -31,9 +29,9 @@ defmodule Spigot.Transports.TCP do
   end
 
   def start_link(options) do
-    options = Keyword.put(options, :connections, Connections.init(options[:socket_name]))
+    options = Keyword.put(options, :connections, Connections.init(options[:spigot]))
 
-    GenServer.start_link(__MODULE__, options, name: options[:socket_name])
+    GenServer.start_link(__MODULE__, options, name: options[:spigot])
   end
 
   @doc """
@@ -55,10 +53,14 @@ defmodule Spigot.Transports.TCP do
            handler_module: Spigot.Transports.TCP.Server,
            transport_module: transport_module,
            transport_options: options[:transport_options],
-           handler_options: [user_agent: options[:user_agent]]
+           handler_options: [
+             user_agent: options[:user_agent],
+             connections: options[:connections],
+             spigot: options[:spigot]
+           ]
          ) do
       {:ok, pid} ->
-        Logger.info("started transport: #{inspect(options[:socket_name])}")
+        Logger.info("started transport: #{inspect(options[:spigot])}")
         {:ok, Keyword.put_new(options, :socket, pid)}
 
       {:error, _} = err ->
@@ -66,15 +68,24 @@ defmodule Spigot.Transports.TCP do
     end
   end
 
-  def connect(to_host, to_port, options) do
-    family = Transport.get_family(to_host)
-
-    with {:ok, to_ip} <- Transport.resolve_name(to_host, family) do
-      :gen_tcp.connect(to_ip, to_port, options)
+  @impl true
+  def handle_call({:send_message, message, key, {_protocol, host, port}}, _from, state) do
+    with {:ok, to_ip} <- Transport.resolve_name(host, state[:family]),
+         iodata <- Message.to_iodata(message) do
+      case Connections.lookup(state[:connections], to_ip, port) do
+        [{_key, handler}] ->
+          send(handler, {:send_message, iodata})
+      end
     else
-      error ->
-        error
+      {:error, reason} ->
+        Logger.warning("tcp transport error for #{host}:#{port}: #{inspect(reason)}")
+
+        if key != nil do
+          Spigot.Router.receive_transport_error(state[:spigot], key, reason)
+        end
     end
+
+    {:reply, :ok, state}
   end
 
   def send_message(message, pid, _options) do

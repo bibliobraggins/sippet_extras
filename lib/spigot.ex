@@ -1,6 +1,7 @@
 defmodule Spigot do
   alias Spigot.{Types, Transport}
-  alias Sippet.{URI}
+  alias Sippet.{URI, Message}
+  alias Message.{RequestLine, StatusLine}
 
   @moduledoc """
     Spigot is the main interface for bringing up and querying the system
@@ -9,7 +10,7 @@ defmodule Spigot do
     a way to start transports that are associated with your UserAgent module
 
     Spigot also takes most of it's concepts directly from the underlying
-    Sippet library, but has been modified to allow associating many socket_name
+    Sippet library, but has been modified to allow associating many spigot
     transports with the same UserAgent module.
   """
 
@@ -21,7 +22,7 @@ defmodule Spigot do
           proxy: binary() | URI.t()
         ]
 
-  @type websocket_name_options :: [
+  @type webspigot_options :: [
           enabled: boolean(),
           max_frame_size: pos_integer(),
           validate_text_frames: boolean(),
@@ -53,7 +54,7 @@ defmodule Spigot do
         Keyword.get(options, :port, 5060)
       end
 
-    socket_name = :"#{address}:#{port}/#{transport}"
+    spigot = :"#{address}:#{port}/#{transport}"
 
     options =
       []
@@ -61,7 +62,7 @@ defmodule Spigot do
       |> Keyword.put(:family, family)
       |> Keyword.put(:port, port)
       |> Keyword.put(:transport, transport)
-      |> Keyword.put(:socket_name, socket_name)
+      |> Keyword.put(:spigot, spigot)
       |> Keyword.put(:user_agent, user_agent)
 
     Supervisor.start_link(__MODULE__, options)
@@ -72,17 +73,29 @@ defmodule Spigot do
       setup_transport(options),
       {
         Registry,
-        name: :"#{options[:socket_name]}.Registry",
+        name: :"#{options[:spigot]}.Registry",
         keys: :unique,
         partitions: System.schedulers_online()
       },
       {
         DynamicSupervisor,
-        strategy: :one_for_one, name: :"#{options[:socket_name]}.Supervisor"
+        strategy: :one_for_one, name: :"#{options[:spigot]}.Supervisor"
       }
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
+  end
+
+  def reliable?(%Message{headers: %{via: [via | _]}}) do
+    {_version, protocol, _host_and_port, _params} = via
+
+    case protocol do
+      :udp ->
+        false
+
+      _ ->
+        true
+    end
   end
 
   defp setup_transport(options) do
@@ -110,4 +123,20 @@ defmodule Spigot do
     mod.child_spec(options)
   end
 
+  def send(user_agent, spigot, message) do
+    unless Message.valid?(message) do
+      raise ArgumentError, "expected :message argument to be a valid SIP message"
+    end
+
+    case message do
+      %Message{start_line: %RequestLine{method: :ack}} ->
+        Spigot.Router.send_transport_message(spigot, message, nil)
+
+      %Message{start_line: %RequestLine{}} ->
+        Spigot.Router.send_transaction_request(user_agent, spigot, message)
+
+      %Message{start_line: %StatusLine{}} ->
+        Spigot.Router.send_transaction_response(spigot, message)
+    end
+  end
 end

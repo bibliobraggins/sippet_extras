@@ -1,5 +1,6 @@
 defmodule Spigot.UserAgent do
-  alias Sippet.{Message, Message.RequestLine, Message.StatusLine}
+  alias Sippet.Message
+  alias Message.{RequestLine, StatusLine}
   alias Spigot.Types
 
   @callback handle_request(Types.request()) :: Types.response()
@@ -15,29 +16,15 @@ defmodule Spigot.UserAgent do
              end
            )
 
-  def send(user_agent, socket, message) do
-    unless Message.valid?(message) do
-      raise ArgumentError, "expected :message argument to be a valid SIP message"
-    end
-
-    case message do
-      %Message{start_line: %RequestLine{method: :ack}} ->
-        Spigot.Router.send_transport_message(socket, message, nil)
-
-      %Message{start_line: %RequestLine{}} ->
-        Spigot.Router.send_transaction_request(user_agent, socket, message)
-
-      %Message{start_line: %StatusLine{}} ->
-        Spigot.Router.send_transaction_response(socket, message)
-    end
-  end
-
   defmacro __using__(options) do
     @methods |> inspect()
 
     options |> IO.inspect()
 
     quote location: :keep do
+      alias Sippet.Message
+      alias Message.{RequestLine, StatusLine}
+
       @behaviour Spigot.UserAgent
       import Spigot.UserAgent
 
@@ -60,12 +47,12 @@ defmodule Spigot.UserAgent do
       # and handle responses (or subsequent transactions) accordingly.
       # the process is will be named according to it's URI, in a registry specific to the UserAgent scope
 
-      def send_message(transport, message) do
+      def send_message(spigot, message) do
         unless Message.valid?(message) do
           raise ArgumentError, "expected :message argument to be a valid SIP message"
         end
 
-        Spigot.UserAgent.send(__MODULE__, transport, message)
+        Spigot.send(__MODULE__, spigot, message)
       end
     end
   end

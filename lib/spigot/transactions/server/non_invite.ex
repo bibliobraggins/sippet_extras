@@ -59,7 +59,7 @@ defmodule Spigot.Transactions.Server.NonInvite do
     do: unhandled_event(event_type, event_content, data)
 
   def completed(:enter, _old_state, %State{request: request} = data) do
-    if reliable?(request, data) do
+    if Spigot.reliable?(request) do
       {:stop, :normal, data}
     else
       {:keep_state_and_data, [{:state_timeout, @timer_j, nil}]}
