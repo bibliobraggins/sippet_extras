@@ -88,7 +88,7 @@ defmodule Spigot.Transports.WS do
       |> Keyword.put(:scheme, scheme)
 
     %{
-      id: __MODULE__,
+      id: options[:socket],
       start: {__MODULE__, :start_link, [options]}
     }
   end
@@ -106,7 +106,7 @@ defmodule Spigot.Transports.WS do
       port: options[:port]
     )
 
-    Logger.debug("started transport: #{inspect(options[:sockname])}")
+    Logger.info("started transport: #{inspect(options[:sockname])}")
 
     {:ok, options}
   end
@@ -117,6 +117,7 @@ defmodule Spigot.Transports.WS do
 
   def close(pid) do
     Process.exit(pid, :shutdown)
+
     :ok
   end
 end

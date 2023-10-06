@@ -12,12 +12,14 @@ defmodule Spigot.Transactions.Client.State do
           request: Message.request(),
           key: key,
           user_agent: atom,
+          socket: atom,
           extras: %{}
         ]
 
   defstruct request: nil,
             key: nil,
             user_agent: nil,
+            socket: nil,
             extras: %{}
 
   @doc """
@@ -26,13 +28,15 @@ defmodule Spigot.Transactions.Client.State do
   def new(
         %Message{start_line: %RequestLine{}} = outgoing_request,
         %Transactions.Client.Key{} = key,
-        user_agent
+        user_agent,
+        socket
       )
-      when is_atom(user_agent) do
+      when is_atom(socket) do
     %__MODULE__{
       request: outgoing_request,
       key: key,
-      user_agent: user_agent
+      user_agent: user_agent,
+      socket: socket
     }
   end
 end

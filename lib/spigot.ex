@@ -2,7 +2,7 @@ defmodule Spigot do
   use Application
 
   alias Spigot.{Types, Transport}
-  alias Sippet.{URI, Message, Message.RequestLine, Message.StatusLine}
+  alias Sippet.{URI}
 
   @moduledoc """
     Spigot is the main interface for bringing up and querying the system
@@ -57,61 +57,67 @@ defmodule Spigot do
     address = Keyword.get(options, :address, "0.0.0.0")
     family = Transport.get_family(address)
     ip = Transport.get_ip(address, family)
-    port = Keyword.get(options, :port, 5060)
     transport = Keyword.get(options, :transport, :udp)
-    sockname = :"#{address}:#{port}/#{transport}"
+
+    port =
+      if Enum.member?([:ws, :wss], transport) do
+        Keyword.get(options, :port, 4000)
+      else
+        Keyword.get(options, :port, 5060)
+      end
+
+    socket = :"#{address}:#{port}/#{transport}"
 
     options =
       options
       |> Keyword.put_new(:ip, ip)
       |> Keyword.put_new(:family, family)
       |> Keyword.put_new(:port, port)
-      |> Keyword.put(:sockname, sockname)
+      |> Keyword.put(:socket, socket)
+      |> Keyword.put(:user_agent, user_agent)
 
-    children = setup_transport(transport, user_agent, options)
+    if is_nil(get_transports()) do
+      Process.put(:transports, [socket])
+    else
+      Process.put(:transports, List.insert_at(get_transports(), length(get_transports()), socket))
+    end
 
-    Enum.each(children, fn child -> DynamicSupervisor.start_child(__MODULE__, child) |> IO.inspect() end)
+    setup_transport(transport, options)
+    |> Enum.each(fn child -> DynamicSupervisor.start_child(__MODULE__, child) end)
   end
 
-  defp setup_transport(transport, user_agent, options) do
-    spec =
+  def get_transports(), do: Process.get(:transports)
+
+  defp setup_transport(transport, options) do
+    mod =
       case transport do
         :udp ->
-          Spigot.Transports.UDP.child_spec(options)
+          Spigot.Transports.UDP
+
         :tcp ->
-          Spigot.Transports.TCP.child_spec(options)
+          Spigot.Transports.TCP
+
         :tls ->
-          Spigot.Transports.TCP.child_spec(options)
+          Spigot.Transports.TCP
+
         :ws ->
-          Spigot.Transports.WS.child_spec(options)
+          Spigot.Transports.WS
+
         :wss ->
-          Spigot.Transports.WS.child_spec(options)
+          Spigot.Transports.WS
+
         _ ->
           raise "must provide a supported transport option"
       end
 
-    [spec,
-      {Registry,
-         name: :"#{user_agent}.Registry", keys: :unique, partitions: System.schedulers_online()},
-      {DynamicSupervisor, strategy: :one_for_one, name: :"#{user_agent}.Supervisor"}]
+    mod.child_spec(options)
   end
 
-  def transports(), do: DynamicSupervisor.which_children(__MODULE__)
-
-  def send(transport, message) do
-    unless Message.valid?(message) do
-      raise ArgumentError, "expected :message argument to be a valid SIP message"
-    end
-
-    case message do
-      %Message{start_line: %RequestLine{method: :ack}} ->
-        Spigot.Router.send_transport_message(transport, message, nil)
-
-      %Message{start_line: %RequestLine{}} ->
-        Spigot.Router.send_transaction_request(transport, message)
-
-      %Message{start_line: %StatusLine{}} ->
-        Spigot.Router.send_transaction_response(transport, message)
-    end
+  def transports() do
+    DynamicSupervisor.which_children(__MODULE__)
+    |> Enum.filter(fn {:undefined, _pid, type, [_MODULE]} = match ->
+      if type == :worker, do: match
+    end)
   end
+
 end

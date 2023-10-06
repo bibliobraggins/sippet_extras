@@ -6,15 +6,22 @@ defmodule Spigot.Transports.WS.Server do
   end
 
   @keepalive <<13, 10, 13, 10>>
-  @exit_code <<255, 244, 255, 253, 6>>
   def handle_in({@keepalive, _}, state), do: {:noreply, state}
+  @exit_code <<255, 244, 255, 253, 6>>
   def handle_in({@exit_code, _}, state), do: {:close, state}
 
   # we may need to wrap a second handler depending on how complicated the websocket
   # opcode handling needs to be
 
   def handle_in({data, [opcode: _any]}, state) do
-    Logger.debug("Received:\n#{inspect(Sippet.Message.parse!(data) |> to_string())}")
+    peer = state[:peer]
+
+    Spigot.Router.handle_transport_message(
+      data,
+      {:ws, peer.address, peer.port},
+      state[:user_agent],
+      state[:sockname]
+    )
 
     ## if we can parse the io message, we should begin a transaction,
     ## pass it into state, then delegate to to a transaction handler module

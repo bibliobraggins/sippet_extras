@@ -12,8 +12,9 @@ defmodule Spigot.Transports.TCP do
   # alias Message.StatusLine, as: Response
 
   def child_spec(options) do
+    {ip, options} = Keyword.pop(options, :ip)
     transport_options = [
-      ip: options[:ip],
+      ip: ip,
       reuseport: true
     ]
 
@@ -48,13 +49,13 @@ defmodule Spigot.Transports.TCP do
 
     case ThousandIsland.start_link(
            port: options[:port],
-           handler_module: Spigot.Transports.TCP.Handler,
+           handler_module: Spigot.Transports.TCP.Server,
            transport_module: transport_module,
            transport_options: options[:transport_options],
            handler_options: [user_agent: options[:user_agent]]
          ) do
       {:ok, pid} ->
-        Logger.debug("started transport: #{inspect(options[:sockname])}")
+        Logger.info("started transport: #{inspect(options[:sockname])}")
         {:ok, Keyword.put_new(options, :socket, pid)}
 
       {:error, _} = err ->

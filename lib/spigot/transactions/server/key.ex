@@ -14,21 +14,19 @@ defmodule Spigot.Transactions.Server.Key do
   @type sentby :: {shost :: binary, sport :: integer}
 
   @type t :: %__MODULE__{
-    branch: binary,
-    method: Message.method,
-    sentby: sentby
-  }
+          branch: binary,
+          method: Message.method(),
+          sentby: sentby
+        }
 
-  defstruct [
-    branch: nil,
-    method: nil,
-    sentby: nil
-  ]
+  defstruct branch: nil,
+            method: nil,
+            sentby: nil
 
   @doc """
   Creates a server transaction identifier.
   """
-  @spec new(branch, Message.method, sentby) :: t
+  @spec new(branch, Message.method(), sentby) :: t
   def new(branch, method, sentby) do
     %__MODULE__{
       branch: branch,
@@ -41,7 +39,7 @@ defmodule Spigot.Transactions.Server.Key do
   Creates a server transaction identifier from an incoming request or an
   outgoing response. If they are related, they will be equal.
   """
-  @spec new(Message.t) :: t
+  @spec new(Message.t()) :: t
   def new(%Message{start_line: %RequestLine{}} = incoming_request) do
     method = incoming_request.start_line.method
 
@@ -71,6 +69,6 @@ defmodule Spigot.Transactions.Server.Key do
 
   defimpl Inspect do
     def inspect(%{branch: branch, method: method, sentby: {host, port}}, _),
-      do: "~K[#{branch}|#{inspect method}|#{host}:#{port}]"
+      do: "~K[#{branch}|#{inspect(method)}|#{host}:#{port}]"
   end
 end

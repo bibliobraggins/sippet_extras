@@ -1,7 +1,6 @@
-defmodule Spigot.Transports.TCP.Handler do
+defmodule Spigot.Transports.TCP.Server do
   use ThousandIsland.Handler
 
-  alias Spigot.{Transaction}
   alias ThousandIsland.Socket
   alias ThousandIsland
 
@@ -14,25 +13,20 @@ defmodule Spigot.Transports.TCP.Handler do
     {:continue, state}
   end
 
-  @keepalive <<13, 10, 13, 10>>
-  @impl ThousandIsland.Handler
-  def handle_data(@keepalive, _socket, state), do: {:continue, state}
-
   @exit_code <<255, 244, 255, 253, 6>>
   @impl ThousandIsland.Handler
   def handle_data(@exit_code, _socket, state), do: {:close, state}
 
   @impl ThousandIsland.Handler
   def handle_data(data, socket, state) do
-    case Sippet.Message.parse(data) do
-      {:ok, request} ->
-        apply(state[:user_agent], request.start_line.method, [
-          %Transaction{request: request, origin: Socket.peer_info(socket)}
-        ])
+    peer = Socket.peer_info(socket)
 
-      {:error, reason} ->
-        Logger.error(inspect(reason))
-    end
+    Spigot.Router.handle_transport_message(
+      data,
+      {:tcp, peer.address, peer.port},
+      state[:user_agent],
+      state[:socket]
+    )
 
     {:continue, state}
   end

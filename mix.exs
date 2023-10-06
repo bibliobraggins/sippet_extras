@@ -27,10 +27,11 @@ defmodule Spigot.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:sippet, git: "https://github.com/bibliobraggins/elixir-sippet"},
       {:thousand_island, "~> 0.6.7"},
       {:bandit, "~> 0.7.7"},
+      {:gen_state_machine, "~> 3.0"},
       {:websock_adapter, "~> 0.5.3"},
+      {:sippet, git: "https://github.com/bibliobraggins/elixir-sippet"},
       {:httpoison, "~> 2.1"}
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}

@@ -1,5 +1,5 @@
 defmodule Spigot.UserAgent do
-  alias Sippet.Message
+  alias Sippet.{Message, Message.RequestLine, Message.StatusLine}
   alias Spigot.Types
 
   @callback handle_request(Types.request()) :: Types.response()
@@ -15,18 +15,37 @@ defmodule Spigot.UserAgent do
              end
            )
 
-  defmacro __using__(user_agent_options \\ nil) do
+  def send(user_agent, socket, message) do
+    unless Message.valid?(message) do
+      raise ArgumentError, "expected :message argument to be a valid SIP message"
+    end
+
+    case message do
+      %Message{start_line: %RequestLine{method: :ack}} ->
+        Spigot.Router.send_transport_message(socket, message, nil)
+
+      %Message{start_line: %RequestLine{}} ->
+        Spigot.Router.send_transaction_request(user_agent, socket, message)
+
+      %Message{start_line: %StatusLine{}} ->
+        Spigot.Router.send_transaction_response(socket, message)
+    end
+  end
+
+  defmacro __using__(options) do
     @methods |> inspect()
+
+    options |> IO.inspect()
+
     quote location: :keep do
       @behaviour Spigot.UserAgent
       import Spigot.UserAgent
 
       @moduledoc """
-        Think of UserAgent as a container of logic that pertains to your requests and responses
-        Spigot UserAgents do not construct or handle requests or responses directly.
-
-        Instead, UserAgents are more something akin to a Plug or Plug Router.
+        Think of UserAgent as a container of logic that pertains to your requests and responses.
         It's main job is orchestrate a request or responses passage through a network interface.
+        In more sophisticated implementations, multiple useragents could pass messages to each other
+        to facilitate multiple network distributed operations across a system.
       """
 
       @impl Spigot.UserAgent
@@ -41,10 +60,12 @@ defmodule Spigot.UserAgent do
       # and handle responses (or subsequent transactions) accordingly.
       # the process is will be named according to it's URI, in a registry specific to the UserAgent scope
 
+      def send_message(transport, message) do
+        unless Message.valid?(message) do
+          raise ArgumentError, "expected :message argument to be a valid SIP message"
+        end
 
-      if length(unquote(user_agent_options)) > 0 do
-        ua_opts = unquote(user_agent_options)
-        IO.inspect(ua_opts)
+        Spigot.UserAgent.send(__MODULE__, transport, message)
       end
     end
   end

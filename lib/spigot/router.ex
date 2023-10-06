@@ -4,32 +4,32 @@ defmodule Spigot.Router do
   ## Process scope as the original message we receive
   ## most of this code is the same, but has been modified
   ## allow for many transports to be associated with the given
-  ## user_agent implementation
+  ## socket implementation
 
   alias Sippet.{Message, Message.RequestLine, Message.StatusLine, URI}
   alias Spigot.Transactions
   require Logger
 
-  def handle_transport_message(iomsg, from, user_agent) when is_list(iomsg) do
+  def handle_transport_message(iomsg, from, user_agent, socket) when is_list(iomsg) do
     iomsg
     |> IO.iodata_to_binary()
-    |> handle_transport_message(from, user_agent)
+    |> handle_transport_message(from, user_agent, socket)
   end
 
-  def handle_transport_message("", _, _), do: :ok
+  def handle_transport_message("", _, _, _), do: :ok
 
-  def handle_transport_message("\n" <> rest, from, user_agent),
-    do: handle_transport_message(rest, from, user_agent)
+  def handle_transport_message("\n" <> rest, from, user_agent, socket),
+    do: handle_transport_message(rest, from, user_agent, socket)
 
-  def handle_transport_message("\r\n" <> rest, from, user_agent),
-    do: handle_transport_message(rest, from, user_agent)
+  def handle_transport_message("\r\n" <> rest, from, user_agent, socket),
+    do: handle_transport_message(rest, from, user_agent, socket)
 
-  def handle_transport_message(raw, from, user_agent) do
+  def handle_transport_message(raw, from, user_agent, socket) do
     with {:ok, message} <- parse_message(raw),
          :ok <- Message.validate(message),
          prepared_message <- update_via(message, from),
          :ok <- Message.validate(prepared_message, from) do
-      receive_transport_message(user_agent, prepared_message)
+      receive_transport_message(socket, user_agent, prepared_message)
     else
       {:error, reason} ->
         Logger.error(fn ->
@@ -96,8 +96,8 @@ defmodule Spigot.Router do
 
   defp update_via(%Message{start_line: %StatusLine{}} = response, _from), do: response
 
-  def receive_transport_error(user_agent, transaction_key, reason) do
-    case Registry.lookup(:"#{user_agent}.Registry", {:transaction, transaction_key}) do
+  def receive_transport_error(socket, transaction_key, reason) do
+    case Registry.lookup(:"#{socket}.Registry", {:transaction, transaction_key}) do
       [] ->
         Logger.warning(fn ->
           case transaction_key do
@@ -132,7 +132,6 @@ defmodule Spigot.Router do
 
   @doc false
   def to_ua(user_agent, fun, args) do
-    IO.inspect user_agent
     case Code.ensure_loaded(user_agent) do
       {:error, _} = error ->
         raise RuntimeError, "User Agent not defined: #{inspect(error)}"
@@ -145,13 +144,14 @@ defmodule Spigot.Router do
   @doc false
   def send_transaction_request(
         user_agent,
+        socket,
         %Message{start_line: %RequestLine{}} = outgoing_request
       ) do
     transaction = Transactions.Client.Key.new(outgoing_request)
 
     # Create a new client transaction now. The request is passed to the
     # transport once it starts.
-    case start_client(user_agent, transaction, outgoing_request) do
+    case start_client(user_agent, socket, transaction, outgoing_request) do
       {:ok, _} ->
         :ok
 
@@ -169,12 +169,12 @@ defmodule Spigot.Router do
 
   @doc false
   def send_transaction_response(
-        user_agent,
+        socket,
         %Message{start_line: %StatusLine{}} = outgoing_response
       ) do
     server_key = Transactions.Server.Key.new(outgoing_response)
 
-    case Registry.lookup(:"#{user_agent}.Registry", {:transaction, server_key}) do
+    case Registry.lookup(:"#{socket}.Registry", {:transaction, server_key}) do
       [] ->
         {:error, :no_transaction}
 
@@ -185,26 +185,22 @@ defmodule Spigot.Router do
   end
 
   defp receive_transport_message(
+         socket,
          user_agent,
-         %Message{start_line: %RequestLine{}} = incoming_request
+         %Message{start_line: %RequestLine{method: method}} = incoming_request
        ) do
     transaction = Transactions.Server.Key.new(incoming_request)
 
-    case Registry.lookup(:"#{user_agent}.Registry", {:transaction, transaction}) do
+    case Registry.lookup(:"#{socket}.Registry", {:transaction, transaction}) do
       [] ->
-        if incoming_request.start_line.method == :ack do
-          # Redirect to the core directly. ACKs sent out of transactions
-          # pertain to the core.
+        if method == :ack do
           to_ua(user_agent, :receive_request, [incoming_request, nil])
         else
-          # Start a new server transaction now. The transaction will redirect
-          # to the core once it starts. It will return errors only if there was
-          # some kind of race condition when receiving the request.
-          start_server(user_agent, transaction, incoming_request)
+          start_server(user_agent, socket, transaction, incoming_request)
         end
 
       [{pid, _}] ->
-        # Redirect the request to the existing transaction. These are tipically
+        # Redirect the request to the existing transaction. These are typically
         # retransmissions or ACKs for 200 OK responses.
         Transactions.Server.receive_request(pid, incoming_request)
     end
@@ -212,12 +208,13 @@ defmodule Spigot.Router do
 
   @doc false
   defp receive_transport_message(
+         socket,
          user_agent,
          %Message{start_line: %StatusLine{}} = incoming_response
        ) do
     transaction = Transactions.Client.Key.new(incoming_response)
 
-    case Registry.lookup(:"#{user_agent}.Registry", {:transaction, transaction}) do
+    case Registry.lookup(:"#{socket}.Registry", {:transaction, transaction}) do
       [] ->
         # Redirect the response to core. These are tipically retransmissions of
         # 200 OK for sent INVITE requests, and they have to be handled directly
@@ -233,6 +230,7 @@ defmodule Spigot.Router do
 
   defp start_client(
          user_agent,
+         socket,
          %Transactions.Client.Key{} = key,
          %Message{start_line: %RequestLine{}} = outgoing_request
        ) do
@@ -242,20 +240,21 @@ defmodule Spigot.Router do
         _otherwise -> Transactions.Client.NonInvite
       end
 
-    initial_data = Transactions.Client.State.new(outgoing_request, key, user_agent)
+    initial_data = Transactions.Client.State.new(outgoing_request, key, user_agent, socket)
 
     DynamicSupervisor.start_child(
-      :"#{user_agent}.Supervisor",
+      :"#{socket}.Supervisor",
       {module,
        [
          initial_data,
-         [name: {:via, Registry, {:"#{user_agent}.Registry", {:transaction, key}}}]
+         [name: {:via, Registry, {:"#{socket}.Registry", {:transaction, key}}}]
        ]}
     )
   end
 
   defp start_server(
-         user_agent,
+        user_agent,
+        socket,
          %Transactions.Server.Key{} = key,
          %Message{start_line: %RequestLine{}} = incoming_request
        ) do
@@ -265,14 +264,14 @@ defmodule Spigot.Router do
         _otherwise -> Transactions.Server.NonInvite
       end
 
-    initial_data = Transactions.Server.State.new(incoming_request, key, user_agent)
+    initial_data = Transactions.Server.State.new(incoming_request, key, user_agent, socket)
 
     DynamicSupervisor.start_child(
-      :"#{user_agent}.Supervisor",
+      :"#{socket}.Supervisor",
       {module,
        [
          initial_data,
-         [name: {:via, Registry, {:"#{user_agent}.Registry", {:transaction, key}}}]
+         [name: {:via, Registry, {:"#{socket}.Registry", {:transaction, key}}}]
        ]}
     )
   end
