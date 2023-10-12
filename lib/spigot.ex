@@ -41,7 +41,16 @@ defmodule Spigot do
         ]
 
   def start_link(options) do
-    user_agent = Keyword.get(options, :user_agent)
+    user_agent =
+      case Code.ensure_loaded(options[:user_agent]) do
+        {:module, module} ->
+          module
+
+        {:error, _} = error ->
+          raise ArgumentError,
+                "must provide a user_agent module: #{inspect(error)}"
+      end
+
     address = Keyword.get(options, :address, "0.0.0.0")
     family = Transport.get_family(address)
     ip = Transport.get_ip(address, family)

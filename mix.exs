@@ -31,7 +31,7 @@ defmodule Spigot.MixProject do
       {:gen_state_machine, "~> 3.0"},
       {:websock_adapter, "~> 0.5.3"},
       {:sippet, git: "https://github.com/bibliobraggins/elixir-sippet"},
-      {:httpoison, "~> 2.1"}
+      {:httpoison, "~> 2.1"},
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]

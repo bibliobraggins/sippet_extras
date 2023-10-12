@@ -10,7 +10,7 @@ defmodule Spigot.Transports.TCP do
   alias Sippet.Message
 
   def child_spec(options) do
-    {ip, options} = Keyword.pop(options, :ip)
+    ip = Keyword.get(options, :ip, {0, 0, 0, 0})
 
     transport_options = [
       ip: ip,
@@ -75,6 +75,8 @@ defmodule Spigot.Transports.TCP do
       case Connections.lookup(state[:connections], to_ip, port) do
         [{_key, handler}] ->
           send(handler, {:send_message, iodata})
+        [] ->
+          {:reply, {:error, :not_found}}
       end
     else
       {:error, reason} ->
@@ -86,6 +88,13 @@ defmodule Spigot.Transports.TCP do
     end
 
     {:reply, :ok, state}
+  end
+
+  @impl true
+  def terminate(reason, state) do
+    Logger.warning("SHUTTING DOWN PROCESS HOLDING SOCKET: #{inspect(state[:spigot])}")
+
+    Process.exit(self(), reason)
   end
 
   def send_message(message, pid, _options) do

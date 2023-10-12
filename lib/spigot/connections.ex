@@ -8,12 +8,12 @@ defmodule Spigot.Connections do
 
   def connect(connections, {ip, port}, handler),
     do: :ets.insert(connections, {key(ip, port), handler})
+
   def connect(connections, ip, port, handler),
     do: :ets.insert(connections, {key(ip, port), handler})
 
-  @spec disconnect(atom | :ets.tid(), map | binary) :: true
-  def disconnect(connections, peer = %{address: _, port: _, ssl_cert: _}),
-    do: disconnect(connections, key(peer.address, peer.port))
+  def disconnect(connections, {address, port}),
+    do: disconnect(connections, key(address, port))
 
   def disconnect(connections, key) when is_binary(key),
     do: :ets.delete(connections, key)

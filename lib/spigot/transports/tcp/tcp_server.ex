@@ -15,7 +15,8 @@ defmodule Spigot.Transports.TCP.Server do
     state =
       state
       |> Keyword.put(:peer, peer)
-      #|> Keyword.put(:socket, socket)
+
+    # |> Keyword.put(:socket, socket)
 
     {:continue, state}
   end
@@ -25,8 +26,10 @@ defmodule Spigot.Transports.TCP.Server do
   def handle_data(@exit_code, _socket, state), do: {:close, state}
 
   @impl ThousandIsland.Handler
-  def handle_data(data, socket, state) do
+  def handle_data(data, _socket, state) do
     peer = state[:peer]
+
+    IO.puts("#{inspect(self())}")
 
     Spigot.Router.handle_transport_message(
       data,
@@ -40,31 +43,24 @@ defmodule Spigot.Transports.TCP.Server do
 
   @impl GenServer
   def handle_info({:send_message, io_msg}, {socket, state}) do
-    Logger.info(inspect socket)
-    Logger.info(inspect state)
 
-    {:noreply, state}
+    with :ok <- ThousandIsland.Socket.send(socket, io_msg) do
+      peer = state[:peer]
+      Connections.disconnect(state[:connections], {peer.address, peer.port})
+      {:noreply, {socket, state}}
+    else
+      err ->
+        Logger.warning("#{inspect(err)}")
+        {:noreply, {socket, state}}
+    end
+
   end
 
   @impl GenServer
-  def handle_info({:send_message, io_msg}, state) do
-    Logger.info(inspect state)
+  def handle_info({:send_message, _io_msg}, state) do
+    Logger.error("this process does not have a socket to transmit on #{inspect(self())}")
 
-    {:noreply, state}
-  end
-
-  @impl GenServer
-  def handle_info({:tcp, inet_port, data}, state) do
-    peer = state[:peer]
-
-    Spigot.Router.handle_transport_message(
-      data,
-      {:tcp, peer.address, peer.port},
-      state[:user_agent],
-      state[:spigot]
-    )
-
-    {:noreply, state}
+    {:shutdown, state}
   end
 
   @impl ThousandIsland.Handler
@@ -85,11 +81,13 @@ defmodule Spigot.Transports.TCP.Server do
   def stringify_hostport(host, port) when is_tuple(host),
     do: "#{host |> :inet.ntoa() |> to_string()}:#{port}"
 
-  def terminate(one, two) do
-    Logger.warning("ONE :: #{inspect(one)}")
+  def terminate(reason, state) do
+    peer = state[:peer]
 
-    Logger.warning("TWO :: #{inspect(two)}")
+    Connections.disconnect(state[:connections], {peer.address, peer.port})
 
-    exit(self())
+    Logger.warning("closing: #{inspect(self())}, reason: #{inspect(reason)}")
+
+    Process.exit(self(), reason)
   end
 end
