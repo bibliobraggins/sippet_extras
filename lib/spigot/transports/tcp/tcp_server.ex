@@ -29,8 +29,6 @@ defmodule Spigot.Transports.TCP.Server do
   def handle_data(data, _socket, state) do
     peer = state[:peer]
 
-    IO.puts("#{inspect(self())}")
-
     Spigot.Router.handle_transport_message(
       data,
       {:tcp, peer.address, peer.port},
