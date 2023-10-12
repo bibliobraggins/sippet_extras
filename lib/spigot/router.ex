@@ -64,11 +64,9 @@ defmodule Spigot.Router do
   defp ip_to_string(ip) when is_binary(ip), do: ip
   defp ip_to_string(ip) when is_tuple(ip), do: :inet.ntoa(ip) |> to_string()
 
-  defp update_via(%Message{start_line: %RequestLine{}} = request, {:wss, _ip, _from_port}),
-    do: request
-
-  defp update_via(%Message{start_line: %RequestLine{}} = request, {:ws, _ip, _from_port}),
-    do: request
+  # do we need these anymore? they just break response handling.
+  # defp update_via(%Message{start_line: %RequestLine{}} = request, {:wss, _ip, _from_port}), do: request
+  # defp update_via(%Message{start_line: %RequestLine{}} = request, {:ws, _ip, _from_port}), do: request
 
   defp update_via(%Message{start_line: %RequestLine{}} = request, {_protocol, ip, from_port}) do
     request

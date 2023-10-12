@@ -1,4 +1,6 @@
 defmodule Spigot.Transports.WS do
+  alias Spigot.{Transport}
+  alias Sippet.{Message}
   @moduledoc """
     Below is an example of a WebSocket handshake in which the client
     requests the WebSocket SIP subprotocol support from the server:
@@ -80,7 +82,11 @@ defmodule Spigot.Transports.WS do
 
   def child_spec(options) do
     plug =
-      Keyword.get(options, :plug, {Spigot.Transports.WS.Plug, user_agent: options[:user_agent]})
+      Keyword.get(
+        options, :plug,
+        {Spigot.Transports.WS.Plug,
+          user_agent: options[:user_agent],
+          spigot: options[:spigot]})
 
     scheme = Keyword.get(options, :scheme, :http)
 
@@ -96,27 +102,58 @@ defmodule Spigot.Transports.WS do
   end
 
   def start_link(options) do
-    options = Keyword.put(options, :connections, Connections.init(options[:spigot]))
+    {plug_mod, plug_options} = options[:plug]
+
+    connections_table =
+      Connections.init(options[:spigot])
+
+    plug_options =
+      Keyword.put(plug_options, :connections, connections_table)
+
+    plug = {plug_mod, plug_options}
+
+    options =
+      options
+      |> Keyword.put(:connections, connections_table)
+      |> Keyword.replace(:plug, plug)
 
     GenServer.start_link(__MODULE__, options, name: options[:spigot])
   end
 
   @impl true
-  def init(options) do
+  def init(state) do
     Bandit.start_link(
-      plug: options[:plug],
-      scheme: options[:scheme],
-      ip: options[:ip],
-      port: options[:port]
+      plug: state[:plug],
+      scheme: state[:scheme],
+      ip: state[:ip],
+      port: state[:port]
     )
 
-    Logger.info("started transport: #{inspect(options[:spigot])}")
+    Logger.info("started transport: #{inspect(state[:spigot])}")
 
-    {:ok, Keyword.put(options, :connections, options)}
+    {:ok, state}
   end
 
   @impl true
-  def handle_call({:send_message, _message, _to_host, _to_port, _key}, _from, state) do
+  def handle_call({:send_message, message, key, {_protocol, host, port}}, _from, state) do
+    with {:ok, to_ip} <- Transport.resolve_name(host, state[:family]),
+         iodata <- Message.to_iodata(message) do
+      case Connections.lookup(state[:connections], to_ip, port) do
+        [{_key, handler}] ->
+
+          send(handler, {:send_message, iodata})
+        [] ->
+          {:reply, {:error, :not_found}}
+      end
+    else
+      {:error, reason} ->
+        Logger.warning("tcp transport error for #{host}:#{port}: #{inspect(reason)}")
+
+        if key != nil do
+          Spigot.Router.receive_transport_error(state[:spigot], key, reason)
+        end
+    end
+
     {:reply, :ok, state}
   end
 

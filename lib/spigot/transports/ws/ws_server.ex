@@ -4,7 +4,9 @@ defmodule Spigot.Transports.WS.Server do
   alias Spigot.Connections
 
   def init(state) do
-    Connections.connect(state[:connections], state[:peer], self())
+    peer = state[:peer]
+
+    Connections.connect(state[:connections], {peer.address, peer.port}, self())
 
     {:ok, state}
   end
@@ -24,18 +26,18 @@ defmodule Spigot.Transports.WS.Server do
       data,
       {:ws, peer.address, peer.port},
       state[:user_agent],
-      state[:socket]
+      state[:spigot]
     )
 
-    ## if we can parse the io message, we should begin a transaction,
-    ## pass it into state, then delegate to to a transaction handler module
-    ## that will be responsible for passing it up to the "user_agent"
-
-    # {:reply, :ok, {:text, "OK"}, state}
     {:ok, state}
   end
 
+  def handle_info({:send_message, io_msg}, state) do
+    {:push, {:text, io_msg}, state}
+  end
+
   def terminate(_any, state) do
+    Connections.disconnect(state[:connections], {state[:peer].address, state[:peer].port})
     {:ok, state}
   end
 end
