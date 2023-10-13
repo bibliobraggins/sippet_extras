@@ -74,7 +74,7 @@ defmodule Spigot do
       |> Keyword.put(:spigot, spigot)
       |> Keyword.put(:user_agent, user_agent)
 
-    Supervisor.start_link(__MODULE__, options)
+    Supervisor.start_link(__MODULE__, options, name: __MODULE__)
   end
 
   def init(options) do
@@ -93,6 +93,11 @@ defmodule Spigot do
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
+  end
+
+  def transports() do
+    Supervisor.which_children(__MODULE__)
+    |> Enum.filter(fn {_name,_pid,type,_} = match -> if type == :worker, do: match end)
   end
 
   def reliable?(%Message{headers: %{via: [via | _]}}) do

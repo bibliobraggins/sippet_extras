@@ -38,7 +38,8 @@ defmodule Spigot.Router do
           [
             "discarded message from ",
             "#{ip_to_string(address)}:#{port}/#{protocol}: ",
-            "#{inspect(reason)}"
+            "#{inspect(reason)}",
+            "\n#{raw}"
           ]
         end)
     end

@@ -3,6 +3,7 @@ defmodule Spigot.Transports.TCP.Server do
 
   alias ThousandIsland.{Socket}
   alias Spigot.{Connections}
+  alias Sippet.{Message}
 
   require Logger
 
@@ -40,11 +41,10 @@ defmodule Spigot.Transports.TCP.Server do
   end
 
   @impl GenServer
-  def handle_info({:send_message, io_msg}, {socket, state}) do
+  def handle_info({:send_message, msg}, {socket, state}) do
+    io_msg = Message.to_iodata(msg)
 
     with :ok <- ThousandIsland.Socket.send(socket, io_msg) do
-      peer = state[:peer]
-      Connections.disconnect(state[:connections], {peer.address, peer.port})
       {:noreply, {socket, state}}
     else
       err ->
@@ -80,11 +80,9 @@ defmodule Spigot.Transports.TCP.Server do
     do: "#{host |> :inet.ntoa() |> to_string()}:#{port}"
 
   def terminate(reason, state) do
-    peer = state[:peer]
+    {address, port} = state[:peer]
 
-    Connections.disconnect(state[:connections], {peer.address, peer.port})
-
-    Logger.warning("closing: #{inspect(self())}, reason: #{inspect(reason)}")
+    Connections.disconnect(state[:connections], {address, port})
 
     Process.exit(self(), reason)
   end

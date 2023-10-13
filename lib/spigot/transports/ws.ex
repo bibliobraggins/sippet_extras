@@ -1,6 +1,5 @@
 defmodule Spigot.Transports.WS do
   alias Spigot.{Transport}
-  alias Sippet.{Message}
   @moduledoc """
     Below is an example of a WebSocket handshake in which the client
     requests the WebSocket SIP subprotocol support from the server:
@@ -136,12 +135,11 @@ defmodule Spigot.Transports.WS do
 
   @impl true
   def handle_call({:send_message, message, key, {_protocol, host, port}}, _from, state) do
-    with {:ok, to_ip} <- Transport.resolve_name(host, state[:family]),
-         iodata <- Message.to_iodata(message) do
+    with {:ok, to_ip} <- Transport.resolve_name(host, state[:family]) do
       case Connections.lookup(state[:connections], to_ip, port) do
         [{_key, handler}] ->
 
-          send(handler, {:send_message, iodata})
+          send(handler, {:send_message, message})
         [] ->
           {:reply, {:error, :not_found}}
       end

@@ -32,12 +32,13 @@ defmodule Spigot.Transports.WS.Server do
     {:ok, state}
   end
 
-  def handle_info({:send_message, io_msg}, state) do
+  def handle_info({:send_message, msg}, state) do
+    io_msg = Sippet.Message.to_iodata(msg)
+
     {:push, {:text, io_msg}, state}
   end
 
   def terminate(_any, state) do
-    Connections.disconnect(state[:connections], {state[:peer].address, state[:peer].port})
     {:ok, state}
   end
 end

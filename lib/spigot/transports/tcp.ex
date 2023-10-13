@@ -7,7 +7,6 @@ defmodule Spigot.Transports.TCP do
   use GenServer
 
   alias Spigot.{Transport, Connections}
-  alias Sippet.Message
 
   def child_spec(options) do
     ip = Keyword.get(options, :ip, {0, 0, 0, 0})
@@ -70,11 +69,10 @@ defmodule Spigot.Transports.TCP do
 
   @impl true
   def handle_call({:send_message, message, key, {_protocol, host, port}}, _from, state) do
-    with {:ok, to_ip} <- Transport.resolve_name(host, state[:family]),
-         iodata <- Message.to_iodata(message) do
+    with {:ok, to_ip} <- Transport.resolve_name(host, state[:family]) do
       case Connections.lookup(state[:connections], to_ip, port) do
         [{_key, handler}] ->
-          send(handler, {:send_message, iodata})
+          send(handler, {:send_message, message})
         [] ->
           {:reply, {:error, :not_found}}
       end
