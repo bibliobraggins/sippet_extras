@@ -59,7 +59,9 @@ defmodule Spigot.Transactions.Server.Invite do
 
     case StatusLine.status_code_class(response.start_line) do
       1 -> {:keep_state, data}
-      2 -> {:stop, :normal, data}
+      2 ->
+        Logger.debug("server completed: #{inspect(data.key)}")
+        {:stop, :normal, data}
       _ -> {:next_state, :completed, data}
     end
   end
@@ -117,14 +119,17 @@ defmodule Spigot.Transactions.Server.Invite do
 
   def confirmed(:enter, _old_state, %State{request: request} = data) do
     if Spigot.reliable?(request) do
+      Logger.debug("server completed: #{inspect(data.key)}")
       {:stop, :normal, data}
     else
       {:keep_state_and_data, [{:state_timeout, @timer_i, nil}]}
     end
   end
 
-  def confirmed(:state_timeout, _nil, data),
-    do: {:stop, :normal, data}
+  def confirmed(:state_timeout, _nil, data) do
+    Logger.debug("server timeout: #{inspect(data.key)}")
+    {:stop, :normal, data}
+  end
 
   def confirmed(:cast, {:incoming_request, _request}, _data),
     do: :keep_state_and_data

@@ -47,7 +47,7 @@ defmodule Spigot.Transports.UDP do
   end
 
   @impl true
-  def handle_call({:send_message, message, key, {_protocol, host, port}}, _from, state) do
+  def handle_call({:send_message, message, key, {:udp, host, port}}, _from, state) do
     with {:ok, to_ip} <- Transport.resolve_name(host, state[:family]),
          iodata <- Message.to_iodata(message),
          :ok <- :gen_udp.send(state[:socket], {to_ip, port}, iodata) do

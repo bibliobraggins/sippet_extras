@@ -298,6 +298,8 @@ defmodule Spigot.Router do
         {host, port}
       end
 
+    IO.inspect port
+
     {protocol, host, port}
   end
 

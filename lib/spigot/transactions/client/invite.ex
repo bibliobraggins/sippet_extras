@@ -87,6 +87,7 @@ defmodule Spigot.Transactions.Client.Invite do
         {:next_state, :proceeding, data}
 
       2 ->
+        Logger.debug("client completed: #{inspect(data.key)}")
         {:stop, :normal, data}
 
       _ ->
@@ -111,6 +112,7 @@ defmodule Spigot.Transactions.Client.Invite do
         {:keep_state, data}
 
       2 ->
+        Logger.debug("client completed: #{inspect(data.key)}")
         {:stop, :normal, data}
 
       _ ->
@@ -130,14 +132,17 @@ defmodule Spigot.Transactions.Client.Invite do
     data = %State{data | extras: extras |> Map.put(:ack, ack)}
 
     if reliable?(request, data) do
+      Logger.debug("client completed: #{inspect(data.key)}")
       {:stop, :normal, data}
     else
       {:keep_state, data, [{:state_timeout, @timer_d, nil}]}
     end
   end
 
-  def completed(:state_timeout, _nil, data),
-    do: {:stop, :normal, data}
+  def completed(:state_timeout, _nil, data) do
+    Logger.debug("client timeout: #{inspect(data.key)}")
+    {:stop, :normal, data}
+  end
 
   def completed(:cast, {:incoming_response, response}, %State{extras: %{ack: ack}} = data) do
     if StatusLine.status_code_class(response.start_line) >= 3 do

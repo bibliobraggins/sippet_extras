@@ -74,7 +74,7 @@ defmodule Spigot do
       |> Keyword.put(:spigot, spigot)
       |> Keyword.put(:user_agent, user_agent)
 
-    Supervisor.start_link(__MODULE__, options, name: __MODULE__)
+    Supervisor.start_link(__MODULE__, options, name: :"#{user_agent}.#{spigot}")
   end
 
   def init(options) do

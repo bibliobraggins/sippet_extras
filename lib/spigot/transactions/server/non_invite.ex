@@ -60,14 +60,17 @@ defmodule Spigot.Transactions.Server.NonInvite do
 
   def completed(:enter, _old_state, %State{request: request} = data) do
     if Spigot.reliable?(request) do
+      Logger.debug("server completed: #{inspect(data.key)}")
       {:stop, :normal, data}
     else
       {:keep_state_and_data, [{:state_timeout, @timer_j, nil}]}
     end
   end
 
-  def completed(:state_timeout, _nil, data),
-    do: {:stop, :normal, data}
+  def completed(:state_timeout, _nil, data) do
+    Logger.debug("server timeout: #{inspect(data.key)}")
+    {:stop, :normal, data}
+  end
 
   def completed(
         :cast,
