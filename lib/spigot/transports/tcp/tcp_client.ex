@@ -24,5 +24,4 @@ defmodule Spigot.Transports.Tcp.Client do
     :gen_tcp.send(state[:socket], io_msg)
     {:noreply, state}
   end
-
 end

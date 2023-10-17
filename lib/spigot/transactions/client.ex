@@ -75,6 +75,19 @@ defmodule Spigot.Transactions.Client do
       def start_link([initial_data, opts]),
         do: GenStateMachine.start_link(__MODULE__, initial_data, opts)
 
+      def terminate(reason, state, data) do
+        case {reason, state} do
+          {:normal, :completed} ->
+            Logger.debug("client transaction completed: #{inspect(data.key)}")
+          {:normal, :proceeding} ->
+            Logger.debug("client transaction halted: #{inspect(data.key)}")
+          _ ->
+            Logger.debug("client transaction ended: #{inspect(data.key)}")
+        end
+
+        :ok
+      end
+
       defoverridable init: 1,
                      send_request: 2,
                      receive_response: 2,

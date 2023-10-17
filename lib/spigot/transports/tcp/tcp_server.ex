@@ -51,7 +51,6 @@ defmodule Spigot.Transports.TCP.Server do
         Logger.warning("#{inspect(err)}")
         {:noreply, {socket, state}}
     end
-
   end
 
   @impl GenServer

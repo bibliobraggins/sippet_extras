@@ -73,6 +73,7 @@ defmodule Spigot.Transports.TCP do
       case Connections.lookup(state[:connections], to_ip, port) do
         [{_key, handler}] ->
           send(handler, {:send_message, message})
+
         [] ->
           {:reply, {:error, :not_found}}
       end

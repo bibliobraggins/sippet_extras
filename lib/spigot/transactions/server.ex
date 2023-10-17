@@ -26,7 +26,7 @@ defmodule Spigot.Transactions.Server do
       require Logger
 
       def init(%State{key: key} = data) do
-        Logger.debug("server transaction #{inspect(key)} started")
+        Logger.debug("server transaction started #{inspect(key)}")
 
         initial_state = unquote(opts)[:initial_state]
         {:ok, initial_state, data}
@@ -43,7 +43,7 @@ defmodule Spigot.Transactions.Server do
         do: Spigot.Router.to_ua(user_agent, :receive_request, [request, spigot, key])
 
       def shutdown(reason, %State{key: key, user_agent: user_agent, spigot: spigot} = data) do
-        Logger.warning("server transaction #{inspect(key)} shutdown: #{reason}")
+        Logger.warning("server transaction shutdown #{inspect(key)} reason: #{reason}")
 
         Spigot.Router.to_ua(user_agent, :receive_error, [reason, spigot, key])
 
@@ -57,7 +57,7 @@ defmodule Spigot.Transactions.Server do
         do: Spigot.reliable?(request)
 
       def unhandled_event(:cast, :terminate, %State{key: key} = data) do
-        Logger.debug("server transaction #{inspect(key)} terminated")
+        Logger.debug("server transaction terminated #{inspect(key)}")
 
         {:stop, :normal, data}
       end
@@ -81,6 +81,20 @@ defmodule Spigot.Transactions.Server do
 
       def start_link([initial_data, opts]),
         do: GenStateMachine.start_link(__MODULE__, initial_data, opts)
+
+
+      def terminate(reason, state, data) do
+        case {reason, state} do
+          {:normal, :completed} ->
+            Logger.debug("server transaction completed: #{inspect(data.key)}")
+          {:normal, :proceeding} ->
+            Logger.debug("server transaction halted: #{inspect(data.key)}")
+          _ ->
+            Logger.debug("server transaction ended: #{inspect(data.key)}")
+        end
+
+        :ok
+      end
 
       defoverridable init: 1,
                      send_response: 2,

@@ -97,7 +97,7 @@ defmodule Spigot do
 
   def transports() do
     Supervisor.which_children(__MODULE__)
-    |> Enum.filter(fn {_name,_pid,type,_} = match -> if type == :worker, do: match end)
+    |> Enum.filter(fn {_name, _pid, type, _} = match -> if type == :worker, do: match end)
   end
 
   def reliable?(%Message{headers: %{via: [via | _]}}) do

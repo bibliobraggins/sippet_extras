@@ -21,7 +21,8 @@ defmodule Spigot.Transactions.Server.NonInvite do
 
     case StatusLine.status_code_class(response.start_line) do
       1 -> {:next_state, :proceeding, data}
-      _ -> {:next_state, :completed, data}
+      _ ->
+        {:next_state, :completed, data}
     end
   end
 
@@ -48,7 +49,8 @@ defmodule Spigot.Transactions.Server.NonInvite do
 
     case StatusLine.status_code_class(response.start_line) do
       1 -> {:keep_state, data}
-      _ -> {:next_state, :completed, data}
+      _ ->
+        {:next_state, :completed, data}
     end
   end
 
@@ -60,7 +62,6 @@ defmodule Spigot.Transactions.Server.NonInvite do
 
   def completed(:enter, _old_state, %State{request: request} = data) do
     if Spigot.reliable?(request) do
-      Logger.debug("server completed: #{inspect(data.key)}")
       {:stop, :normal, data}
     else
       {:keep_state_and_data, [{:state_timeout, @timer_j, nil}]}
@@ -68,7 +69,6 @@ defmodule Spigot.Transactions.Server.NonInvite do
   end
 
   def completed(:state_timeout, _nil, data) do
-    Logger.debug("server timeout: #{inspect(data.key)}")
     {:stop, :normal, data}
   end
 

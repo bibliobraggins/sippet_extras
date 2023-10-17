@@ -1,5 +1,6 @@
 defmodule Spigot.Transports.WS do
   alias Spigot.{Transport}
+
   @moduledoc """
     Below is an example of a WebSocket handshake in which the client
     requests the WebSocket SIP subprotocol support from the server:
@@ -82,10 +83,10 @@ defmodule Spigot.Transports.WS do
   def child_spec(options) do
     plug =
       Keyword.get(
-        options, :plug,
-        {Spigot.Transports.WS.Plug,
-          user_agent: options[:user_agent],
-          spigot: options[:spigot]})
+        options,
+        :plug,
+        {Spigot.Transports.WS.Plug, user_agent: options[:user_agent], spigot: options[:spigot]}
+      )
 
     scheme = Keyword.get(options, :scheme, :http)
 
@@ -138,8 +139,8 @@ defmodule Spigot.Transports.WS do
     with {:ok, to_ip} <- Transport.resolve_name(host, state[:family]) do
       case Connections.lookup(state[:connections], to_ip, port) do
         [{_key, handler}] ->
-
           send(handler, {:send_message, message})
+
         [] ->
           {:reply, {:error, :not_found}}
       end

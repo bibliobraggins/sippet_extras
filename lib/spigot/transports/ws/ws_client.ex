@@ -3,7 +3,11 @@ defmodule Spigot.Transports.WS.Client do
   require Logger
 
   def start_link(url, options) do
-    WebSockex.start_link(url, __MODULE__, Keyword.put(options, :extra_headers, [{"sec-websocket-protocol", "sip"}]))
+    WebSockex.start_link(
+      url,
+      __MODULE__,
+      Keyword.put(options, :extra_headers, [{"sec-websocket-protocol", "sip"}])
+    )
   end
 
   def handle_connect(conn, state) do

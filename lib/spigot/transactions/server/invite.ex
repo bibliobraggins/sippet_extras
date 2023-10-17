@@ -15,9 +15,9 @@ defmodule Spigot.Transactions.Server.Invite do
   # timer I is 5s
   @timer_i 5_000
 
-  def init(%State{key: key, user_agent: user_agent} = data) do
+  def init(%State{key: key, spigot: spigot} = data) do
     # add an alias for incoming ACK requests for status codes != 200
-    Registry.register(user_agent, {:transaction, %{key | method: :ack}}, nil)
+    Registry.register(:"#{spigot}.Registry", {:transaction, %{key | method: :ack}}, nil)
 
     super(data)
   end
@@ -58,11 +58,14 @@ defmodule Spigot.Transactions.Server.Invite do
     data = send_response(response, data)
 
     case StatusLine.status_code_class(response.start_line) do
-      1 -> {:keep_state, data}
+      1 ->
+        {:keep_state, data}
+
       2 ->
-        Logger.debug("server completed: #{inspect(data.key)}")
         {:stop, :normal, data}
-      _ -> {:next_state, :completed, data}
+
+      _ ->
+        {:next_state, :completed, data}
     end
   end
 
@@ -119,7 +122,6 @@ defmodule Spigot.Transactions.Server.Invite do
 
   def confirmed(:enter, _old_state, %State{request: request} = data) do
     if Spigot.reliable?(request) do
-      Logger.debug("server completed: #{inspect(data.key)}")
       {:stop, :normal, data}
     else
       {:keep_state_and_data, [{:state_timeout, @timer_i, nil}]}
@@ -127,7 +129,6 @@ defmodule Spigot.Transactions.Server.Invite do
   end
 
   def confirmed(:state_timeout, _nil, data) do
-    Logger.debug("server timeout: #{inspect(data.key)}")
     {:stop, :normal, data}
   end
 
