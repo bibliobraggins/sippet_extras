@@ -20,7 +20,9 @@ defmodule Spigot.Transactions.Server.NonInvite do
     data = send_response(response, data)
 
     case StatusLine.status_code_class(response.start_line) do
-      1 -> {:next_state, :proceeding, data}
+      1 ->
+        {:next_state, :proceeding, data}
+
       _ ->
         {:next_state, :completed, data}
     end
@@ -48,7 +50,9 @@ defmodule Spigot.Transactions.Server.NonInvite do
     data = send_response(response, data)
 
     case StatusLine.status_code_class(response.start_line) do
-      1 -> {:keep_state, data}
+      1 ->
+        {:keep_state, data}
+
       _ ->
         {:next_state, :completed, data}
     end

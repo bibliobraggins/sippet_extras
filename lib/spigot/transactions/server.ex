@@ -82,13 +82,14 @@ defmodule Spigot.Transactions.Server do
       def start_link([initial_data, opts]),
         do: GenStateMachine.start_link(__MODULE__, initial_data, opts)
 
-
       def terminate(reason, state, data) do
         case {reason, state} do
           {:normal, :completed} ->
             Logger.debug("server transaction completed: #{inspect(data.key)}")
+
           {:normal, :proceeding} ->
             Logger.debug("server transaction halted: #{inspect(data.key)}")
+
           _ ->
             Logger.debug("server transaction ended: #{inspect(data.key)}")
         end

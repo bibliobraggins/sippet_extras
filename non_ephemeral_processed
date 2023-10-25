@@ -1,0 +1,14 @@
+REGISTER sip:192.168.3.104 SIP/2.0
+Supported: path
+Max-Forwards: 70
+Expires: 3600
+CSeq: 2000 REGISTER
+Content-Length: 0
+Contact: <sip:10001@192.168.3.236:49728;transport=tcp>
+Call-ID: 893058908-16128-1@BJC.BGI.D.CDG
+User-Agent: Grandstream GRP2614 1.0.9.83
+From: <sip:10001@192.168.3.104>;tag=1441752483
+To: <sip:10001@192.168.3.104>
+Via: SIP/2.0/TCP 192.168.3.236:16128;rport=49728;branch=z9hG4bK1378079482;alias
+Allow: INVITE, ACK, OPTIONS, CANCEL, BYE, SUBSCRIBE, NOTIFY, INFO, REFER, UPDATE, MESSAGE
+

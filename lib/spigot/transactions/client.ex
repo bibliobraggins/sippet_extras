@@ -79,8 +79,10 @@ defmodule Spigot.Transactions.Client do
         case {reason, state} do
           {:normal, :completed} ->
             Logger.debug("client transaction completed: #{inspect(data.key)}")
+
           {:normal, :proceeding} ->
             Logger.debug("client transaction halted: #{inspect(data.key)}")
+
           _ ->
             Logger.debug("client transaction ended: #{inspect(data.key)}")
         end

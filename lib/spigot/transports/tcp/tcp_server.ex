@@ -17,8 +17,6 @@ defmodule Spigot.Transports.TCP.Server do
       state
       |> Keyword.put(:peer, peer)
 
-    # |> Keyword.put(:socket, socket)
-
     {:continue, state}
   end
 
