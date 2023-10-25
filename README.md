@@ -1,17 +1,9 @@
 # Spigot
 
-TODO: 
-  - TCP transport: 
-    - debug and simplify TCP transport function calls
-    - client transactions/connections
-    - handle tls options in server handler module
-  - WS transport: 
-    - allow users to override WS Plug with their own (allows for more complicated authorization and set up)
-    - server side module is not ready
-    - client side module is not begun
-  - Dynamic UserAgent mapping for B2BUA support
-  - UserAgent Client 
-    - dispatch api for client tasks, allow clients to handle own responses.
+Spigot is an experimental highly permissive SIP Element, designed to operate as a simple stateless system
+for coordinating SIP interactions over a network.
+
+Each "Spigot" can be thought of as a "transport" of sorts for sip messages.
 
 About SIP: 
 
@@ -73,9 +65,14 @@ aimed features:
 defmodule MyUserAgent do 
   use Spigot.UserAgent
 
-  def receive_request(request, key) do
+  def receive_request(request, spigot, key) do
     "... do some stuff here ..."
   end
+
+  def receive_response(response, spigot, key) do
+    "... do some other stuff here ..."
+  end
+  
 end
 ```
 Provided that the module MyUserAgent is present at compile time,

@@ -20,7 +20,7 @@ defmodule Spigot.Connections do
 
   @spec lookup(atom | :ets.tid(), binary()) :: [tuple]
   def lookup(connections, key),
-    do: :ets.lookup(connections, key) |> IO.inspect()
+    do: :ets.lookup(connections, key)
 
   def lookup(connections, host, port),
     do: :ets.lookup(connections, key(host, port))
