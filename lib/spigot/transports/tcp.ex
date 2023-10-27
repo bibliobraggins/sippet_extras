@@ -6,20 +6,27 @@ defmodule Spigot.Transports.TCP do
   require Logger
   use GenServer
 
-  alias Spigot.{Transport, Connections}
+  alias Spigot.{Transport, Connections, Transports.TCP.Client}
+  alias Sippet.{Message, Message.RequestLine, Message.StatusLine}
 
   def child_spec(options) do
     ip = Keyword.get(options, :ip, {0, 0, 0, 0})
 
     transport_options = [
+      :binary,
       ip: ip,
-      reuseport: true
+      reuseport: true,
+      packet: :line
     ]
+
+    client_options =
+      Keyword.get(options, :client_options, [])
 
     options =
       options
       |> Keyword.put(:reuseport, true)
       |> Keyword.put(:transport_options, transport_options)
+      |> Keyword.put(:client_options, client_options)
 
     %{
       id: __MODULE__,
@@ -68,18 +75,41 @@ defmodule Spigot.Transports.TCP do
   end
 
   @impl true
-  def handle_call({:send_message, message, key, {_protocol, host, port}}, _from, state) do
+  def handle_call(
+        {:send_message, %Message{start_line: %RequestLine{}} = request, key,
+         {_protocol, host, port}},
+        _from,
+        state
+      ) do
     with {:ok, to_ip} <- Transport.resolve_name(host, state[:family]) do
       case Connections.lookup(state[:connections], to_ip, port) do
         [{_key, handler}] ->
-          send(handler, {:send_message, message})
+          send(handler, {:send_message, request})
 
         [] ->
-          {:reply, {:error, :not_found}}
+          start_client(to_ip, port, state[:client_options])
       end
     else
       {:error, reason} ->
-        Logger.warning("tcp transport error for #{host}:#{port}: #{inspect(reason)}")
+        Logger.warning("TCP error:  #{host}:#{port}: #{inspect(reason)}")
+    end
+
+    {:reply, :ok, state}
+  end
+
+  @impl true
+  def handle_call(
+        {:send_message, %Message{start_line: %StatusLine{}} = response, key,
+         {_protocol, host, port}},
+        _from,
+        state
+      ) do
+    with {:ok, to_ip} <- Transport.resolve_name(host, state[:family]),
+         [{_key, handler}] <- Connections.lookup(state[:connections], to_ip, port) do
+      send(handler, {:send_message, response})
+    else
+      {:error, reason} ->
+        Logger.warning("TCP error:  #{host}:#{port}: #{inspect(reason)}")
 
         if key != nil do
           Spigot.Router.receive_transport_error(state[:spigot], key, reason)
@@ -91,7 +121,7 @@ defmodule Spigot.Transports.TCP do
 
   @impl true
   def terminate(reason, state) do
-    Logger.warning("SHUTTING DOWN PROCESS HOLDING SOCKET: #{inspect(state[:spigot])}")
+    Logger.warning("SHUTTING DOWN SOCKET HOLDING PROCESS: #{inspect(state[:spigot])}")
 
     Process.exit(self(), reason)
   end
@@ -101,4 +131,12 @@ defmodule Spigot.Transports.TCP do
   end
 
   def close(pid, timeout \\ 15000), do: ThousandIsland.stop(pid, timeout)
+
+  def start_client(host, port, options) do
+    options =
+      Keyword.put(:host, host)
+      |> Keyword.put(:port, port)
+
+      # TODO
+  end
 end

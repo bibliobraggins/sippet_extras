@@ -19,6 +19,7 @@ defmodule Spigot.Transports.UDP do
       |> Keyword.put(:transport_options, [
         Transport.get_family(options[:ip]),
         :binary,
+        packet: :line,
         ip: options[:ip],
         active: true
       ])

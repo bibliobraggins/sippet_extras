@@ -84,12 +84,11 @@ defmodule Spigot do
         Registry,
         name: :"#{options[:spigot]}.Registry",
         keys: :unique,
-        partitions: System.schedulers_online(),
+        partitions: System.schedulers_online()
       },
       {
         DynamicSupervisor,
-        name: :"#{options[:spigot]}.Supervisor",
-        strategy: :one_for_one,
+        name: :"#{options[:spigot]}.Supervisor", strategy: :one_for_one
       }
     ]
 
