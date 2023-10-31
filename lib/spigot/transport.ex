@@ -22,7 +22,7 @@ defmodule Spigot.Transport do
   def handle_connection(table, ip, port, handler),
     do: :ets.insert(table, {key(ip, port), handler})
 
-  def  handle_disconnection(table, address, port),
+  def handle_disconnection(table, address, port),
     do: handle_disconnection(table, key(address, port))
 
   def handle_disconnection(table, key) when is_binary(key),

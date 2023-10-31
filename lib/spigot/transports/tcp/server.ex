@@ -81,7 +81,7 @@ defmodule Spigot.Transports.TCP.Server do
   def terminate(reason, state) do
     {address, port} = state[:peer]
 
-    Connections.disconnect(state[:connections], {address, port})
+    Transport.handle_disconnection(state[:connections], {address, port})
 
     Process.exit(self(), reason)
   end

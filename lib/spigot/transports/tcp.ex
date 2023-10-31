@@ -136,6 +136,6 @@ defmodule Spigot.Transports.TCP do
       Keyword.put(:host, host)
       |> Keyword.put(:port, port)
 
-      # TODO
+    # TODO
   end
 end
