@@ -78,7 +78,7 @@ defmodule Spigot.Transports.WS do
   use GenServer
   require Logger
 
-  alias Spigot.Connections
+  alias Spigot.Transport
 
   def child_spec(options) do
     plug =
@@ -105,7 +105,7 @@ defmodule Spigot.Transports.WS do
     {plug_mod, plug_options} = options[:plug]
 
     connections_table =
-      Connections.init(options[:spigot])
+      Transport.start_table(options[:spigot])
 
     plug_options =
       Keyword.put(plug_options, :connections, connections_table)
@@ -137,7 +137,7 @@ defmodule Spigot.Transports.WS do
   @impl true
   def handle_call({:send_message, message, key, {_protocol, host, port}}, _from, state) do
     with {:ok, to_ip} <- Transport.resolve_name(host, state[:family]) do
-      case Connections.lookup(state[:connections], to_ip, port) do
+      case Transport.lookup(state[:connections], to_ip, port) do
         [{_key, handler}] ->
           send(handler, {:send_message, message})
 

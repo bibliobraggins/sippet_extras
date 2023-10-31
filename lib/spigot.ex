@@ -95,8 +95,8 @@ defmodule Spigot do
     Supervisor.init(children, strategy: :one_for_one)
   end
 
-  def transports() do
-    Supervisor.which_children(__MODULE__)
+  def transports(pid) do
+    Supervisor.which_children(pid)
     |> Enum.filter(fn {_name, _pid, type, _} = match -> if type == :worker, do: match end)
   end
 

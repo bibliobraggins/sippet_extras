@@ -12,6 +12,29 @@ defmodule Spigot.Transport do
     ]
   end
 
+  def table(spigot), do: :"#{spigot}.table"
+
+  def start_table(spigot),
+    do: :ets.new(table(spigot), [:named_table, :set, :public, {:write_concurrency, true}])
+
+  def key(ip, port), do: :erlang.term_to_binary({ip, port})
+
+  def handle_connection(table, ip, port, handler),
+    do: :ets.insert(table, {key(ip, port), handler})
+
+  def  handle_disconnection(table, address, port),
+    do: handle_disconnection(table, key(address, port))
+
+  def handle_disconnection(table, key) when is_binary(key),
+    do: :ets.delete(table, key)
+
+  @spec lookup(atom | :ets.tid(), binary()) :: [tuple]
+  def lookup(table, key),
+    do: :ets.lookup(table, key)
+
+  def lookup(table, host, port),
+    do: :ets.lookup(table, key(host, port))
+
   def get_family(host) when is_binary(host),
     do: host |> to_charlist() |> get_family()
 

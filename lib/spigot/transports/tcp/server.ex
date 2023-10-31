@@ -9,18 +9,17 @@ defmodule Spigot.Transports.TCP.Server do
 
   @impl ThousandIsland.Handler
   def handle_connection(socket, state) do
-    with {:ok, {_host, _port} = peer} <- Socket.peername(socket) do
-      state =
-        Keyword.put(state, :peer, peer)
+    peer = Socket.peer_info(socket)
 
-      Connections.connect(state[:connections], peer, self())
+    Transport.handle_connection(state[:connections], peer.address, peer.port, self())
 
-      {:continue, state}
-    else
-      error ->
-        Logger.error(inspect(error))
-        {:close, state}
-    end
+    state =
+      state
+      |> Keyword.put(:peer, peer)
+
+    # |> Keyword.put(:socket, socket)
+
+    {:continue, state}
   end
 
   @exit_code <<255, 244, 255, 253, 6>>
@@ -29,11 +28,11 @@ defmodule Spigot.Transports.TCP.Server do
 
   @impl ThousandIsland.Handler
   def handle_data(data, _socket, state) do
-    {host, port} = state[:peer]
+    peer = state[:peer]
 
     Spigot.Router.handle_transport_message(
       data,
-      {:tcp, host, port},
+      {:tcp, peer.address, peer.port},
       state[:user_agent],
       state[:spigot]
     )
