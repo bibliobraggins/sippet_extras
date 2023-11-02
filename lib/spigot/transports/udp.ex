@@ -19,7 +19,6 @@ defmodule Spigot.Transports.UDP do
       |> Keyword.put(:transport_options, [
         Transport.get_family(options[:ip]),
         :binary,
-        packet: :line,
         ip: options[:ip],
         active: true
       ])
@@ -36,6 +35,7 @@ defmodule Spigot.Transports.UDP do
 
   @impl true
   def init(options) do
+    IO.inspect options
     case listen(options) do
       {:ok, socket} ->
         options = Keyword.put(options, :socket, socket)

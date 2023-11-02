@@ -2,7 +2,15 @@ defmodule Spigot.Transports.TCP.Client do
   use GenServer
   require Logger
 
-  def start_link(options) do
+  defstruct [
+    :socket,
+    :server,
+    :server_port,
+    :timeout,
+    :retries,
+  ]
+
+  def start_link(host, port, options) do
     genserver_options =
       Keyword.get(options, :genserver_options, [])
 
@@ -15,6 +23,8 @@ defmodule Spigot.Transports.TCP.Client do
     options =
       options
       |> Keyword.delete(:genserver_options)
+      |> Keyword.put(:host, host)
+      |> Keyword.put(:port, port)
       |> Keyword.put(:timeout, timeout)
       |> Keyword.put(:retries, retries)
 
@@ -23,30 +33,29 @@ defmodule Spigot.Transports.TCP.Client do
 
   def init(state) do
     state =
-      Keyword.put(
-        state,
-        :tcp_options,
-        [:inet, :binary, active: true, packet: :line]
-      )
+      struct(__MODULE__, state)
 
     {:ok, :connect, {:continue, state}}
   end
 
   def handle_continue(:connect, state) do
-    with {:ok, socket} <- :gen_tcp.connect(state[:host], state[:port], state[:tcp_options]) do
-      Keyword.put(state, :socket, socket)
+    with {:ok, socket} <- connect(state.host, state.port) do
+      Map.put(state, :socket, socket)
 
       {:ok, state}
     else
       {:error, :timeout} ->
         if state[:retries] == 0 do
           Process.exit(self(), :timeout)
+          {:stop, :shutdown, state}
+        else
+          state =
+            Map.replace!(state, :retries, state[:retries] - 1)
+          {:noreply, :connect, {:continue, state}}
         end
-
-        state =
-          Keyword.replace!(state, :retries, state[:retries] - 1)
-
-        {:noreply, :connect, {:continue, state}}
+      _ = error ->
+        Logger.error("#{inspect(error)}")
+        {:stop, :shutdown, state}
     end
   end
 
@@ -63,4 +72,7 @@ defmodule Spigot.Transports.TCP.Client do
     :gen_tcp.send(state[:socket], io_msg)
     {:noreply, state}
   end
+
+  def connect(host, port, timeout \\ 10_000, options \\ [:inet, :binary, active: true, packet: :line]), do:
+    :gen_tcp.connect(host, port, options, timeout)
 end

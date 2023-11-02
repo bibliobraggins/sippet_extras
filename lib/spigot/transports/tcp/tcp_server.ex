@@ -2,22 +2,20 @@ defmodule Spigot.Transports.TCP.Server do
   use ThousandIsland.Handler
 
   alias ThousandIsland.{Socket}
-  alias Spigot.{Connections}
+  alias Spigot.{Transport}
   alias Sippet.{Message}
 
   require Logger
 
   @impl ThousandIsland.Handler
   def handle_connection(socket, state) do
-    peer = Socket.peer_info(socket)
+    {:ok, {host, port} = peer} = Socket.peername(socket)
 
-    Transport.handle_connection(state[:connections], peer.address, peer.port, self())
+    Transport.handle_connection(state[:connections], host, port, self())
 
     state =
       state
       |> Keyword.put(:peer, peer)
-
-    # |> Keyword.put(:socket, socket)
 
     {:continue, state}
   end
@@ -28,11 +26,11 @@ defmodule Spigot.Transports.TCP.Server do
 
   @impl ThousandIsland.Handler
   def handle_data(data, _socket, state) do
-    peer = state[:peer]
+    {host, port} = state[:peer]
 
     Spigot.Router.handle_transport_message(
       data,
-      {:tcp, peer.address, peer.port},
+      {:tcp, host, port},
       state[:user_agent],
       state[:spigot]
     )
@@ -81,7 +79,7 @@ defmodule Spigot.Transports.TCP.Server do
   def terminate(reason, state) do
     {address, port} = state[:peer]
 
-    Transport.handle_disconnection(state[:connections], {address, port})
+    Spigot.Transport.handle_disconnection(state[:connections], address, port)
 
     Process.exit(self(), reason)
   end
