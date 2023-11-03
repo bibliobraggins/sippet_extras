@@ -2,15 +2,17 @@ defmodule Spigot.Transports.TCP.Client do
   use GenServer
   require Logger
 
+  alias Spigot.{Transports.TCP}
+
   defstruct [
     :socket,
     :server,
     :server_port,
     :timeout,
-    :retries,
+    :retries
   ]
 
-  def start_link(host, port, options) do
+  def start_link(host, port, options \\ []) do
     genserver_options =
       Keyword.get(options, :genserver_options, [])
 
@@ -31,15 +33,19 @@ defmodule Spigot.Transports.TCP.Client do
     GenServer.start_link(__MODULE__, options, genserver_options)
   end
 
+  @impl true
+  @spec init(any()) :: {:ok, :connect, {:continue, struct()}}
   def init(state) do
+
     state =
       struct(__MODULE__, state)
 
     {:ok, :connect, {:continue, state}}
   end
 
+  @impl true
   def handle_continue(:connect, state) do
-    with {:ok, socket} <- connect(state.host, state.port) do
+    with {:ok, socket} <- TCP.connect(state.host, state.port) do
       Map.put(state, :socket, socket)
 
       {:ok, state}
@@ -50,15 +56,18 @@ defmodule Spigot.Transports.TCP.Client do
           {:stop, :shutdown, state}
         else
           state =
-            Map.replace!(state, :retries, state[:retries] - 1)
+            Map.replace!(state, :retries, state.retries - 1)
+
           {:noreply, :connect, {:continue, state}}
         end
+
       _ = error ->
         Logger.error("#{inspect(error)}")
         {:stop, :shutdown, state}
     end
   end
 
+  @impl true
   def handle_info({:tcp, _socket, data}, state) do
     Logger.debug("""
     GOT RESPONSE:
@@ -68,11 +77,19 @@ defmodule Spigot.Transports.TCP.Client do
     {:noreply, state}
   end
 
-  def handle_info({:send_message, io_msg}, state) do
-    :gen_tcp.send(state[:socket], io_msg)
+  @impl true
+  def handle_info({:send_message, msg = %Sippet.Message{}}, state) do
+    io_msg = Sippet.Message.to_iodata(msg)
+
+    :gen_tcp.send(state.socket, io_msg)
+
     {:noreply, state}
   end
 
-  def connect(host, port, timeout \\ 10_000, options \\ [:inet, :binary, active: true, packet: :line]), do:
-    :gen_tcp.connect(host, port, options, timeout)
+  @impl true
+  def terminate(reason, state) do
+    :gen_tcp.close(state.socket)
+
+    Process.exit(self(), reason)
+  end
 end

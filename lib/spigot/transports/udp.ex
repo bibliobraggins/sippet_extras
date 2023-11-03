@@ -30,12 +30,15 @@ defmodule Spigot.Transports.UDP do
   end
 
   def start_link(options) do
+    Transport.workers(options[:spigot])
+    |> Supervisor.start_link(strategy: :one_for_all)
+
     GenServer.start_link(__MODULE__, options, name: options[:spigot])
   end
 
   @impl true
   def init(options) do
-    IO.inspect options
+
     case listen(options) do
       {:ok, socket} ->
         options = Keyword.put(options, :socket, socket)
@@ -78,17 +81,6 @@ defmodule Spigot.Transports.UDP do
   end
 
   def listen(state), do: :gen_udp.open(state[:port], state[:transport_options])
-
-  def send_message(message, recipient, socket, family) do
-    with {:ok, to_ip} <- Transport.resolve_name(recipient.host, family),
-         iodata <- Message.to_iodata(message),
-         :ok <- :gen_udp.send(socket, {to_ip, recipient.port}, iodata) do
-      :ok
-    else
-      error ->
-        error
-    end
-  end
 
   @impl true
   def terminate(reason, options) do

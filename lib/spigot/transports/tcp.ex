@@ -32,7 +32,11 @@ defmodule Spigot.Transports.TCP do
     }
   end
 
+  @spec start_link(keyword()) :: :ignore | {:error, any()} | {:ok, pid()}
   def start_link(options) do
+    Transport.workers(options[:spigot])
+    |> Supervisor.start_link(strategy: :one_for_all)
+
     options = Keyword.put(options, :connections, Transport.start_table(options[:spigot]))
 
     GenServer.start_link(__MODULE__, options, name: options[:spigot])
@@ -88,6 +92,7 @@ defmodule Spigot.Transports.TCP do
           case Client.start_link(to_ip, port, state) do
             {:ok, client} when is_pid(client) ->
               :ok
+
             error ->
               Logger.warning("Client got error: #{inspect(error)}")
           end
@@ -108,14 +113,15 @@ defmodule Spigot.Transports.TCP do
         state
       ) do
     with {:ok, to_ip} <- Transport.resolve_name(host, state[:family]) do
-         case Transport.lookup(state[:connections], to_ip, port) do
-          [{_key, handler}] ->
-            send(handler, {:send_message, response})
+      case Transport.lookup(state[:connections], to_ip, port) do
+        [{_key, handler}] ->
+          send(handler, {:send_message, response})
 
-            {:reply, :ok, state}
-          [] ->
-            {:reply, {:error, :no_handler}, state}
-         end
+          {:reply, :ok, state}
+
+        [] ->
+          {:reply, {:error, :no_handler}, state}
+      end
     end
   end
 
@@ -126,10 +132,25 @@ defmodule Spigot.Transports.TCP do
     Process.exit(self(), reason)
   end
 
-  def send_message(message, pid, _options) do
-    send({:send_message, message}, pid)
+  @spec connect(
+          :inet.ip_address(),
+          :inet.port_number(),
+          :inet | :inet6,
+          :infinity | non_neg_integer(),
+          keyword()
+        ) :: {:error, atom()} | {:ok, port() | {:"$inet", atom(), any()}}
+  def connect(host, port, family \\ :inet, timeout \\ 10_000, options \\ []) do
+    options =
+      Keyword.merge(options, active: true, packet: :line)
+      |> List.insert_at(0, family)
+      |> List.insert_at(0, :binary)
+
+    :gen_tcp.connect(host, port, options, timeout)
   end
 
+  @spec close(
+          atom() | pid() | {atom(), any()} | {:via, atom(), any()},
+          :infinity | non_neg_integer()
+        ) :: :ok
   def close(pid, timeout \\ 15000), do: ThousandIsland.stop(pid, timeout)
-
 end

@@ -3,10 +3,6 @@ defmodule Demo do
 
   use Spigot.UserAgent
 
-  @b2b %{
-    register: fn -> {"abusivefish.com", 5065, :udp} end
-  }
-
   def receive_request(
         %Message{start_line: %RequestLine{method: :ack}} = _request,
         _spigot,

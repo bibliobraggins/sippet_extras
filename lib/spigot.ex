@@ -3,6 +3,8 @@ defmodule Spigot do
   alias Sippet.{URI, Message}
   alias Message.{RequestLine, StatusLine}
 
+  use Application
+
   @moduledoc """
     Spigot is the main interface for bringing up and querying the system
 
@@ -40,7 +42,15 @@ defmodule Spigot do
           cipher_suite: :string | :compatible
         ]
 
-  def start_link(options) do
+  def start(_, _) do
+    DynamicSupervisor.start_link(__MODULE__, [], name: __MODULE__)
+  end
+
+  def init(_) do
+    DynamicSupervisor.init(strategy: :one_for_one)
+  end
+
+  def start_transport(options) do
     user_agent =
       case Code.ensure_loaded(options[:user_agent]) do
         {:module, module} ->
@@ -74,30 +84,13 @@ defmodule Spigot do
       |> Keyword.put(:spigot, spigot)
       |> Keyword.put(:user_agent, user_agent)
 
-    Supervisor.start_link(__MODULE__, options, name: :"#{user_agent}.#{spigot}")
+    transport = setup_transport(options)
+
+    DynamicSupervisor.start_child(__MODULE__, transport)
   end
 
-  def init(options) do
-    children = [
-      setup_transport(options),
-      {
-        Registry,
-        name: :"#{options[:spigot]}.Registry",
-        keys: :unique,
-        partitions: System.schedulers_online()
-      },
-      {
-        DynamicSupervisor,
-        name: :"#{options[:spigot]}.Supervisor", strategy: :one_for_one
-      }
-    ]
-
-    Supervisor.init(children, strategy: :one_for_one)
-  end
-
-  def transports(pid) do
-    Supervisor.which_children(pid)
-    |> Enum.filter(fn {_name, _pid, type, _} = match -> if type == :worker, do: match end)
+  def transports() do
+    DynamicSupervisor.which_children(__MODULE__)
   end
 
   def reliable?(%Message{headers: %{via: [via | _]}}) do
@@ -113,28 +106,25 @@ defmodule Spigot do
   end
 
   defp setup_transport(options) do
-    mod =
-      case options[:transport] do
-        :udp ->
-          Spigot.Transports.UDP
+    case options[:transport] do
+      :udp ->
+        Spigot.Transports.UDP.child_spec(options)
 
-        :tcp ->
-          Spigot.Transports.TCP
+      :tcp ->
+        Spigot.Transports.TCP.child_spec(options)
 
-        :tls ->
-          Spigot.Transports.TCP
+      :tls ->
+        Spigot.Transports.TCP.child_spec(options)
 
-        :ws ->
-          Spigot.Transports.WS
+      :ws ->
+        Spigot.Transports.WS.child_spec(options)
 
-        :wss ->
-          Spigot.Transports.WS
+      :wss ->
+        Spigot.Transports.WS.child_spec(options)
 
-        _ ->
-          raise "must provide a supported transport option"
-      end
-
-    mod.child_spec(options)
+      _ ->
+        raise "must provide a supported transport option"
+    end
   end
 
   def send(user_agent, spigot, message) do

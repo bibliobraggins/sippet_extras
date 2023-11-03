@@ -102,6 +102,9 @@ defmodule Spigot.Transports.WS do
   end
 
   def start_link(options) do
+    Transport.workers(options[:spigot])
+    |> Supervisor.start_link(strategy: :one_for_all)
+
     {plug_mod, plug_options} = options[:plug]
 
     connections_table =
