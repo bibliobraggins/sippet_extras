@@ -25,7 +25,6 @@ defmodule Spigot.UserAgent do
       alias Sippet.Message
       alias Message.{RequestLine, StatusLine}
 
-      @behaviour Spigot.UserAgent
       import Spigot.UserAgent
 
       @moduledoc """
@@ -35,11 +34,9 @@ defmodule Spigot.UserAgent do
         to facilitate multiple network distributed operations across a system.
       """
 
-      @impl Spigot.UserAgent
       def handle_request(request),
         do: raise("No request handler in #{__MODULE__}")
 
-      @impl Spigot.UserAgent
       def handle_response(response),
         do: raise("No response handler in #{__MODULE__}")
 

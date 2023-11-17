@@ -27,7 +27,7 @@ defmodule Spigot.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:thousand_island, "~> 1.1.0"},
+      {:thousand_island, "~> 1.2.0"},
       {:bandit, "~> 1.0.0"},
       {:gen_state_machine, "~> 3.0"},
       {:websock_adapter, "~> 0.5.3"},

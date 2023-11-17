@@ -1,12 +1,12 @@
-defmodule Spigot.Transports.WS.Server do
+defmodule Spigot.Transport.WS.Server do
   require Logger
 
-  alias Spigot.Transport
+  alias Spigot.{Transport.Connections}
 
   def init(state) do
     peer = state[:peer]
 
-    Transport.handle_connection(state[:connections], peer.address, peer.port, self())
+    Connections.handle_connection(state[:connections], peer.address, peer.port, self())
 
     {:ok, state}
   end

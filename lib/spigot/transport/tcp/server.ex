@@ -1,8 +1,8 @@
-defmodule Spigot.Transports.TCP.Server do
+defmodule Spigot.Transport.TCP.Server do
   use ThousandIsland.Handler
 
   alias ThousandIsland.{Socket}
-  alias Spigot.{Transport}
+  alias Spigot.{Transport.Connections}
   alias Sippet.{Message}
 
   require Logger
@@ -11,7 +11,7 @@ defmodule Spigot.Transports.TCP.Server do
   def handle_connection(socket, state) do
     {:ok, {host, port} = peer} = Socket.peername(socket)
 
-    Transport.handle_connection(state[:connections], host, port, self())
+    Connections.handle_connection(state[:connections], host, port, self())
 
     state =
       state
@@ -79,7 +79,7 @@ defmodule Spigot.Transports.TCP.Server do
   def terminate(reason, state) do
     {address, port} = state[:peer]
 
-    Spigot.Transport.handle_disconnection(state[:connections], address, port)
+    Connections.handle_disconnection(state[:connections], address, port)
 
     Process.exit(self(), reason)
   end

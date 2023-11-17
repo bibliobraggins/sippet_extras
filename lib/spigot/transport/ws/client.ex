@@ -1,4 +1,4 @@
-defmodule Spigot.Transports.WS.Client do
+defmodule Spigot.Transport.WS.Client do
   use WebSockex
   require Logger
 

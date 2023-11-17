@@ -1,4 +1,4 @@
-defmodule Spigot.Transports.UDP do
+defmodule Spigot.Transport.UDP do
   use GenServer
 
   alias Spigot.Transport
@@ -38,7 +38,6 @@ defmodule Spigot.Transports.UDP do
 
   @impl true
   def init(options) do
-
     case listen(options) do
       {:ok, socket} ->
         options = Keyword.put(options, :socket, socket)

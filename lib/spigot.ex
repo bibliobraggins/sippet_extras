@@ -3,8 +3,6 @@ defmodule Spigot do
   alias Sippet.{URI, Message}
   alias Message.{RequestLine, StatusLine}
 
-  use Application
-
   @moduledoc """
     Spigot is the main interface for bringing up and querying the system
 
@@ -108,19 +106,19 @@ defmodule Spigot do
   defp setup_transport(options) do
     case options[:transport] do
       :udp ->
-        Spigot.Transports.UDP.child_spec(options)
+        Spigot.Transport.UDP.child_spec(options)
 
       :tcp ->
-        Spigot.Transports.TCP.child_spec(options)
+        Spigot.Transport.TCP.child_spec(options)
 
       :tls ->
-        Spigot.Transports.TCP.child_spec(options)
+        Spigot.Transport.TCP.child_spec(options)
 
       :ws ->
-        Spigot.Transports.WS.child_spec(options)
+        Spigot.Transport.WS.child_spec(options)
 
       :wss ->
-        Spigot.Transports.WS.child_spec(options)
+        Spigot.Transport.WS.child_spec(options)
 
       _ ->
         raise "must provide a supported transport option"

@@ -1,4 +1,4 @@
-defmodule Spigot.Transports.TCP do
+defmodule Spigot.Transport.TCP do
   @moduledoc """
   Implements a TCP transport via ThousandIsland
   """
@@ -6,15 +6,15 @@ defmodule Spigot.Transports.TCP do
   require Logger
   use GenServer
 
-  alias Spigot.{Transport, Transports.TCP.Client}
+  alias Spigot.{Transport, Transport.Connections}
   alias Sippet.{Message, Message.RequestLine, Message.StatusLine}
 
   def child_spec(options) do
-    ip = Keyword.get(options, :ip, {0, 0, 0, 0})
+    local_ip = Keyword.get(options, :local_ip, {0, 0, 0, 0})
 
     transport_options = [
       :binary,
-      ip: ip
+      ip: local_ip
     ]
 
     client_options =
@@ -22,7 +22,6 @@ defmodule Spigot.Transports.TCP do
 
     options =
       options
-      |> Keyword.put(:reuseport, true)
       |> Keyword.put(:transport_options, transport_options)
       |> Keyword.put(:client_options, client_options)
 
@@ -37,7 +36,7 @@ defmodule Spigot.Transports.TCP do
     Transport.workers(options[:spigot])
     |> Supervisor.start_link(strategy: :one_for_all)
 
-    options = Keyword.put(options, :connections, Transport.start_table(options[:spigot]))
+    options = Keyword.put(options, :connections, Connections.init(options[:spigot]))
 
     GenServer.start_link(__MODULE__, options, name: options[:spigot])
   end
@@ -83,15 +82,16 @@ defmodule Spigot.Transports.TCP do
         _from,
         state
       ) do
-    with {:ok, to_ip} <- Transport.resolve_name(host, state[:family]) do
-      case Transport.lookup(state[:connections], to_ip, port) do
+    with {:ok, peer_ip} <- Transport.resolve_name(host, state[:family]) do
+      case Connections.lookup(state[:connections], peer_ip, port) do
         [{_key, handler}] ->
           send(handler, {:send_message, request})
+          {:reply, :ok, state}
 
         [] ->
-          case Client.start_link(to_ip, port, state) do
-            {:ok, client} when is_pid(client) ->
-              :ok
+          case connect(peer_ip, port, state) do
+            {:ok, socket} when is_port(socket) ->
+              {:reply, :ok, state}
 
             error ->
               Logger.warning("Client got error: #{inspect(error)}")
@@ -101,8 +101,6 @@ defmodule Spigot.Transports.TCP do
       {:error, reason} ->
         Logger.warning("TCP error:  #{host}:#{port}: #{inspect(reason)}")
     end
-
-    {:reply, :ok, state}
   end
 
   @impl true
@@ -112,8 +110,8 @@ defmodule Spigot.Transports.TCP do
         _from,
         state
       ) do
-    with {:ok, to_ip} <- Transport.resolve_name(host, state[:family]) do
-      case Transport.lookup(state[:connections], to_ip, port) do
+    with {:ok, peer_ip} <- Transport.resolve_name(host, state[:family]) do
+      case Connections.lookup(state[:connections], peer_ip, port) do
         [{_key, handler}] ->
           send(handler, {:send_message, response})
 
@@ -127,18 +125,11 @@ defmodule Spigot.Transports.TCP do
 
   @impl true
   def terminate(reason, state) do
-    Logger.warning("SHUTTING DOWN SOCKET HOLDING PROCESS: #{inspect(state[:spigot])}")
+    Connections.teardown(state[:connections])
 
     Process.exit(self(), reason)
   end
 
-  @spec connect(
-          :inet.ip_address(),
-          :inet.port_number(),
-          :inet | :inet6,
-          :infinity | non_neg_integer(),
-          keyword()
-        ) :: {:error, atom()} | {:ok, port() | {:"$inet", atom(), any()}}
   def connect(host, port, family \\ :inet, timeout \\ 10_000, options \\ []) do
     options =
       Keyword.merge(options, active: true, packet: :line)
