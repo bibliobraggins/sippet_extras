@@ -1,4 +1,4 @@
-defmodule Spigot.Transport.Connections do
+defmodule Sippet.Transports.Connections do
   @spec init(atom()) :: :ets.tid()
   def init(name),
     do: :ets.new(name, [:set, :public, {:write_concurrency, true}])

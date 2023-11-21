@@ -1,9 +1,9 @@
-defmodule Spigot.MixProject do
+defmodule SippetExtras.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :spigot,
+      app: :sippet_extras,
       version: "0.1.0",
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
@@ -14,7 +14,6 @@ defmodule Spigot.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      mod: {Spigot, []},
       extra_applications: [
         :logger,
         :observer,
@@ -29,7 +28,6 @@ defmodule Spigot.MixProject do
     [
       {:thousand_island, "~> 1.2.0"},
       {:bandit, "~> 1.0.0"},
-      {:gen_state_machine, "~> 3.0"},
       {:websock_adapter, "~> 0.5.3"},
       {:sippet, git: "https://github.com/bibliobraggins/elixir-sippet"},
       {:httpoison, "~> 2.1"},

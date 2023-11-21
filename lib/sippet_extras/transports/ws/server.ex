@@ -1,7 +1,7 @@
-defmodule Spigot.Transport.WS.Server do
+defmodule Sippet.Transports.WS.Server do
   require Logger
 
-  alias Spigot.{Transport.Connections}
+  alias Sippet.{Transports.Connections}
 
   def init(state) do
     peer = state[:peer]
@@ -22,11 +22,10 @@ defmodule Spigot.Transport.WS.Server do
   def handle_in({data, [opcode: _any]}, state) do
     peer = state[:peer]
 
-    Spigot.Router.handle_transport_message(
+    Sippet.Router.handle_transport_message(
+      state[:sippet],
       data,
-      {:ws, peer.address, peer.port},
-      state[:user_agent],
-      state[:spigot]
+      {:ws, peer.address, peer.port}
     )
 
     {:ok, state}

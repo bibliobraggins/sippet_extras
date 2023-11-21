@@ -1,5 +1,5 @@
-defmodule Spigot.Transport.WS do
-  alias Spigot.{Transport, Transport.Connections}
+defmodule Sippet.Transport.WS do
+  alias Sippet.Transports.{Utils,Connections}
 
   @moduledoc """
     Below is an example of a WebSocket handshake in which the client
@@ -78,68 +78,99 @@ defmodule Spigot.Transport.WS do
   use GenServer
   require Logger
 
-  alias Spigot.Transport
+  def start_link(options) do
+    sippet =
+      case Keyword.fetch(options, :name) do
+        {:ok, sippet} when is_atom(sippet) ->
+          sippet
 
-  def child_spec(options) do
-    plug =
-      Keyword.get(
-        options,
-        :plug,
-        {Spigot.Transport.WS.Plug, user_agent: options[:user_agent], spigot: options[:spigot]}
-      )
+        {:ok, other} ->
+          raise ArgumentError, "expected :sippet to be an atom, got: #{inspect(other)}"
+
+        :error ->
+          raise ArgumentError, "expected :sippet option to be present"
+      end
 
     scheme = Keyword.get(options, :scheme, :http)
+    family = Keyword.get(options, :family, :inet)
+    ip =
+      Keyword.get(options, :ip, {0,0,0,0})
+      |> case do
+        ip when is_tuple(ip) ->
+          ip
+        ip when is_binary(ip) ->
+          Utils.resolve_name(ip, family)
+        end
+    port = Keyword.get(options, :port, 5060)
+
+    plug = {_plug_mod, _plug_options} =
+      case Keyword.get(options,:plug,Sippet.Transport.WS.Plug) do
+        {plug, plug_options} when is_atom(plug) ->
+          {plug, plug_options}
+        plug when is_atom(plug) ->
+          {plug, sippet: options[:name]}
+        _ ->
+          {Sippet.Transport.WS.Plug, sippet: options[:name]}
+      end
+
+    port_range = Keyword.get(options, :port_range, 10_000..20_000)
+    connections_table = Connections.init(options[:sippet])
+
+    client_options = [
+      sippet: sippet,
+      port_range: port_range,
+      connections: connections_table
+    ]
+
+    bandit_options =
+    []
+    |> Keyword.put(:ip, ip)
+    |> Keyword.put(:port, port)
+    |> Keyword.put(:scheme, scheme)
+    |> Keyword.put(:plug, plug)
 
     options =
       options
-      |> Keyword.put(:plug, plug)
-      |> Keyword.put(:scheme, scheme)
+      |> Keyword.put(:sippet, sippet)
+      |> Keyword.put(:client_options, client_options)
+      |> Keyword.put(:bandit_options, bandit_options)
 
-    %{
-      id: options[:spigot],
-      start: {__MODULE__, :start_link, [options]}
-    }
-  end
-
-  def start_link(options) do
-    Transport.workers(options[:spigot])
-    |> Supervisor.start_link(strategy: :one_for_all)
-
-    {plug_mod, plug_options} = options[:plug]
-
-    connections_table =
-      Connections.init(options[:spigot])
-
-    plug_options =
-      Keyword.put(plug_options, :connections, connections_table)
-
-    plug = {plug_mod, plug_options}
-
-    options =
-      options
-      |> Keyword.put(:connections, connections_table)
-      |> Keyword.replace(:plug, plug)
-
-    GenServer.start_link(__MODULE__, options, name: options[:spigot])
+    GenServer.start_link(__MODULE__, options)
   end
 
   @impl true
-  def init(state) do
-    Bandit.start_link(
+  def init(options) do
+    Sippet.register_transport(options[:sippet], :ws, true)
+
+    {:ok, nil, {:continue, options}}
+  end
+
+  @impl true
+  def handle_continue(state, nil) do
+    case Bandit.start_link(
       plug: state[:plug],
       scheme: state[:scheme],
       ip: state[:ip],
       port: state[:port]
-    )
+    ) do
+      {:ok, _pid} ->
+        Logger.info("started WS transport: #{inspect(self())}")
+        {:noreply, state}
+      _ = reason ->
+          Logger.error(
+            "#{state[:ip]}#{state[:port]}/ws" <>
+              "#{inspect(reason)}, retrying in 10s..."
+          )
 
-    Logger.info("started transport: #{inspect(state[:spigot])}")
+          Process.sleep(10_000)
 
-    {:ok, state}
+          {:noreply, nil, {:continue, state}}
+    end
   end
 
   @impl true
   def handle_call({:send_message, message, key, {_protocol, host, port}}, _from, state) do
-    with {:ok, to_ip} <- Transport.resolve_name(host, state[:family]) do
+    with {:ok, to_ip} <- Utils.resolve_name(host, state[:family]) do
       case Connections.lookup(state[:connections], to_ip, port) do
         [{_key, handler}] ->
           send(handler, {:send_message, message})
@@ -152,7 +183,7 @@ defmodule Spigot.Transport.WS do
         Logger.warning("tcp transport error for #{host}:#{port}: #{inspect(reason)}")
 
         if key != nil do
-          Spigot.Router.receive_transport_error(state[:spigot], key, reason)
+          Sippet.Router.receive_transport_error(state[:sippet], key, reason)
         end
     end
 

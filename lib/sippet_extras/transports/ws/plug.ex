@@ -1,4 +1,4 @@
-defmodule Spigot.Transport.WS.Plug do
+defmodule Sippet.Transports.WS.Plug do
   require Logger
 
   def init(options) do
@@ -11,7 +11,7 @@ defmodule Spigot.Transport.WS.Plug do
 
       WebSockAdapter.upgrade(
         conn,
-        Spigot.Transport.WS.Server,
+        Sippet.Transport.WS.Server,
         Keyword.put(options, :peer, Plug.Conn.get_peer_data(conn)),
         timeout: 60_000,
         validate_utf8: true

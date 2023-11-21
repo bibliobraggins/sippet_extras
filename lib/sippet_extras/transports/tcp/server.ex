@@ -1,9 +1,8 @@
-defmodule Spigot.Transport.TCP.Server do
+defmodule Sippet.Transports.TCP.Server do
   use ThousandIsland.Handler
 
   alias ThousandIsland.{Socket}
-  alias Spigot.{Transport.Connections}
-  alias Sippet.{Message}
+  alias Sippet.{Message, Transports.Connections}
 
   require Logger
 
@@ -28,11 +27,10 @@ defmodule Spigot.Transport.TCP.Server do
   def handle_data(data, _socket, state) do
     {host, port} = state[:peer]
 
-    Spigot.Router.handle_transport_message(
+    Sippet.Router.handle_transport_message(
+      state[:sippet],
       data,
-      {:tcp, host, port},
-      state[:user_agent],
-      state[:spigot]
+      {:tcp, host, port}
     )
 
     {:continue, state}

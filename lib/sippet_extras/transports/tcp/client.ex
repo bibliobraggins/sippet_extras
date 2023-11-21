@@ -1,4 +1,4 @@
-defmodule Spigot.Transport.TCP.Client do
+defmodule Sippet.Transports.TCP.Client do
   require Logger
 
   use Supervisor
@@ -6,7 +6,7 @@ defmodule Spigot.Transport.TCP.Client do
   @type t :: %{
           user_agent: module(),
           connections: :ets.table(),
-          spigot: atom() | pid(),
+          sippet: atom() | pid(),
           port: :inet.port_number(),
           transport_options: :inet.options(),
           genserver_options: GenServer.options(),
@@ -19,7 +19,7 @@ defmodule Spigot.Transport.TCP.Client do
 
   @enforce_keys [
     :user_agent,
-    :spigot,
+    :sippet,
     :port,
     :connections,
     :transport_options,
