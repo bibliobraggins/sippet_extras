@@ -1,0 +1,30 @@
+defmodule Demo do
+  require Logger
+  use Sippet.Core
+
+  alias Sippet.{Message, Message.RequestLine}
+
+  def receive_request(
+        %Message{start_line: %RequestLine{method: :ack}} = _request,
+        nil
+      ),
+      do: :ok
+
+  def receive_request(
+        %Message{start_line: %RequestLine{method: :invite}} = request,
+        _key
+      ),
+      do: )
+
+  def receive_request(
+        %Message{start_line: %RequestLine{method: :register}} = request,
+        _key
+      ) do
+    response = Message.to_response(request, 404)
+
+
+  end
+
+
+
+end

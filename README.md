@@ -1,19 +1,7 @@
-# Spigot
+# Sippet Extras
 
-Spigot aims to be a [Plug](https://github.com/elixir-plug/plug) style library for SIP applications.
-
-TODO: 
-  - TCP transport: 
-    - debug and simplify TCP transport function calls
-    - client transactions/connections
-    - handle tls options in server handler module
-  - WS transport: 
-    - allow users to override WS Plug with their own (allows for more complicated authorization and set up)
-    - server side module is not ready
-    - client side module is not begun
-  - Dynamic UserAgent mapping for B2BUA support
-  - UserAgent Client 
-    - dispatch api for client tasks, allow clients to handle own responses.
+Sippet Extras is an experimental set of socket transports for an elixir based SIP Element, designed
+for coordinating SIP transactions over a network.
 
 About SIP: 
 
@@ -68,54 +56,48 @@ The core library elixir-sippet provides built-in support for the following as we
     
 aimed features:
   - off-the-shelf UDP, TCP, TLS, WS, and WSS transports
-  - plug router style DSL for request handling
 
 ## Example
 
 ```elixir
-defmodule MyUserAgent do 
-  use Spigot.UserAgent
-  # define routes
-  def ack(msg, _key) do
-    send_resp(msg, 200)
+defmodule MyCore do 
+  use Sippet.Core
+
+  def receive_request(request, key) do
+    "... do some stuff here ..."
+  end
+
+  def receive_response(response, key) do
+    "... do some other stuff here ..."
   end
   
-  def register(msg, _key) do
-    send_resp(msg, 200)
-  end
-
-  def invite(msg, _key) do
-    status_code = ...do some thing here...
-    ### begin call handling ###
-    
-    send_resp(msg, status_code)
-  end
 end
 ```
-Provided that the module MyUserAgent is present at compile time,
-we can now call Spigot.start_link/2 and we should see the following if succesful:
-```
-iex(1)> Spigot.start_link(user_agent: MyUserAgent, port: 5060, transport: :tcp, address: "127.0.0.1")
-{:ok, #PID<0.251.0>}
-iex(2)> 
-[debug] #PID<0.259.0> started transport 127.0.0.1:5060/tcp
-```
 
+```
+iex(1)> Sippet.start_link(name: :sippet_name)
+{:ok, #PID<0.251.0>}
+iex(2)> Sippet.Transports.TCP.start_link(name: :sippet_name, port: 5060, ip: "127.0.0.1")
+[debug] #PID<0.259.0> started transport 127.0.0.1:5060/tcp
+iex(3)> Sippet.register_core(:sippet_name, MyCore)
+:ok
+```
+And now whatever you have written in MyCore should be invoked when valid messages arrive on socket.
 
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `Spigot` to your list of dependencies in `mix.exs`:
+by adding `SippetExtras` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:spigot, "~> 0.1.0"}
+    {:sippet_extras, "~> 0.1.0"}
   ]
 end
 ```
 
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/Spigot>.
+be found at <https://hexdocs.pm/SippetExtras>.
 

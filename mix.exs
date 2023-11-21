@@ -1,9 +1,9 @@
-defmodule Spigot.MixProject do
+defmodule SippetExtras.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :spigot,
+      app: :sippet_extras,
       version: "0.1.0",
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
@@ -27,11 +27,11 @@ defmodule Spigot.MixProject do
   defp deps do
     [
       # {:sippet, "~> 1.0.1"},
-      {:sippet, git: "https://github.com/bibliobraggins/elixir-sippet"},
-      {:thousand_island, "~> 0.6.7"},
-      {:bandit, "~> 0.7.7"},
+      {:thousand_island, "~> 1.2.0"},
+      {:bandit, "~> 1.0.0"},
       {:websock_adapter, "~> 0.5.3"},
-      {:httpoison, "~> 2.1"}
+      {:httpoison, "~> 2.1"},
+      {:websockex, "~> 0.4.3"}
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]
